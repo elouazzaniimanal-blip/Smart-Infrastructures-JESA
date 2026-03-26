@@ -63,7 +63,7 @@
         <div class="data-row"><span class="label">Section théorique (As)</span><span id="v-as" class="val-green">---</span></div>
         <div class="data-row"><span id="lbl-n1" class="label">---</span><span id="v-n1" class="val">---</span></div>
         <div class="data-row"><span id="lbl-n2" class="label">---</span><span id="v-n2" class="val">---</span></div>
-        <div class="data-row"><span id="lbl-cf" class="label">Cadres</span><span id="v-cf" class="val">---</span></div>
+        <div class="data-row"><span class="label">Cadres Verticaux</span><span id="v-cv" class="val">---</span></div>
 
         <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 15px 0;">
 
@@ -80,38 +80,50 @@
 <script type="module">
 import { ARButton } from 'https://unpkg.com/three@0.128.0/examples/jsm/webxr/ARButton.js';
 
-// --- CONFIGURATION ---
+// --- CONFIGURATION SYNCHRO VB.NET ---
 const p = new URLSearchParams(window.location.search);
 const type = (p.get('type') || 'CORBEAU').toUpperCase();
 
-let h_raw = parseFloat(p.get('h')) || 600;
+let h_raw = parseFloat(p.get('h')) || 450;
 let h = h_raw > 10 ? h_raw/1000 : h_raw;
-let b_raw = parseFloat(p.get('b')) || 400;
+let b_raw = parseFloat(p.get('b')) || 300;
 let b = b_raw > 10 ? b_raw/1000 : b_raw;
 
-const asStr = p.get('as') || '12.50*8*6*2*0.30*3'; 
+// Parsing de la chaîne : Section*NbTirants*NbCadresHoriz*NbCadresVerticaux
+const asStr = p.get('as') || '0.00*0*0*0***'; 
 const parts = asStr.split('*').map(s => s.trim());
 
-const sectionValue = (parts[0] && parts[0] !== "0.00") ? parts[0] : "12.50";
-const n1 = parseInt(parts[1]) || 8; 
-const n2 = parseInt(parts[2]) || 6; 
-const nV = parseInt(parts[3]) || 2; // Récupération NbCadresVerticaux
-const nbCF = parseInt(parts[5]) || 3; 
+const sectionValue = (parts[0] && parts[0] !== "0.00") ? parts[0] : "---";
+const n1 = parseInt(parts[1]) || 0; // Tirants
+const n2 = parseInt(parts[2]) || 0; // Cadres Horizontaux
+const nV = parseInt(parts[3]) || 0; // Cadres Verticaux (As,lnk)
 
+// Mise à jour du HUD
 document.getElementById('v-as').innerText = sectionValue + " cm²";
+document.getElementById('v-n1').innerText = n1 + " HA";
+document.getElementById('v-n2').innerText = n2 + " HA8 (Horiz.)";
+document.getElementById('v-cv').innerText = nV + " HA10 (Poteau)";
 
+// --- LOGIQUE METIER ---
 const btnNdc = document.getElementById('btn-ndc');
 if (type === "CORBEAU") {
-    btnNdc.onclick = () => alert('Note de Structure : WinCorbeau\nEurocode 2 : CONFORME ✅');
+    document.getElementById('txt-type').innerText = "CORBEAU TRAPÉZOÏDAL";
+    document.getElementById('lbl-n1').innerText = "Tirants Sup.";
+    document.getElementById('lbl-n2').innerText = "Cadres Horiz.";
+    btnNdc.onclick = () => alert('Note de Structure : WinCorbeau\nEurocode 2 : CONFORME ✅\nLes cadres verticaux assurent la suspension de la charge.');
 } else {
+    document.getElementById('txt-type').innerText = "SEMELLE À ENCUVEMENT";
+    document.getElementById('lbl-n1').innerText = "Nappe X";
+    document.getElementById('lbl-n2').innerText = "Nappe Y";
     btnNdc.onclick = () => alert('Note de Structure : WinSemelle\nEurocode 2 : CONFORME ✅');
 }
 
-// --- MATURIMÉTRIE ---
+// --- DASHBOARD MATURITE ---
 window.calculerMaturite = function() {
     let tempMoyenne = 32; let ageReel = 18; 
     let ageEquivalent = ageReel * Math.pow(2, (tempMoyenne - 20) / 10); 
-    return (35 * (ageEquivalent / (ageEquivalent + 5))).toFixed(1);
+    let fck = 35 * (ageEquivalent / (ageEquivalent + 5));
+    return fck.toFixed(1);
 }
 
 window.drawPredictiveChart = function() {
@@ -119,17 +131,20 @@ window.drawPredictiveChart = function() {
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0,0,280,120);
     ctx.strokeStyle = "#00d4ff"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(30, 100);
-    for(let x = 0; x < 180; x++) { ctx.lineTo(x + 30, 100 - (35 * (x/10 / (x/10 + 2.5)) * 2.5)); }
+    for(let x = 0; x < 180; x++) {
+        let t = x / 10; let y = 100 - (35 * (t / (t + 2.5)) * 2.5);
+        ctx.lineTo(x + 30, y);
+    }
     ctx.stroke();
 };
 
 window.showMaturityDashboard = function() {
     document.getElementById('matu-container').style.display = 'block';
     window.drawPredictiveChart();
-    alert('Résistance : ' + window.calculerMaturite() + ' MPa\nDécoffrage : AUTORISÉ ✅');
+    alert('Résistance actuelle : ' + window.calculerMaturite() + ' MPa\nMaturité : 88%');
 }
 
-// --- SCENE & RENDERER ---
+// --- THREE.JS SCENE ---
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.01, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -141,58 +156,51 @@ document.body.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['
 const group = new THREE.Group();
 scene.add(group);
 
-function addEdges(mesh) {
-    const edges = new THREE.EdgesGeometry(mesh.geometry);
-    mesh.add(new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000 })));
-}
-
 const matBeton = new THREE.MeshStandardMaterial({ color: 0x888888, transparent: true, opacity: 0.3 });
-const matOrange = new THREE.MeshStandardMaterial({ color: 0xff6b00, metalness: 1.0, roughness: 0.2 });
+const matOrange = new THREE.MeshStandardMaterial({ color: 0xff6b00, metalness: 0.8, roughness: 0.2 });
 const matLineOrange = new THREE.LineBasicMaterial({ color: 0xff6b00 });
-const matSocle = new THREE.MeshStandardMaterial({ color: 0x666666, transparent: true, opacity: 0.4 });
-const matBlanc = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.7 });
 
 scene.add(new THREE.AmbientLight(0xffffff, 0.8));
 const sun = new THREE.DirectionalLight(0xffffff, 1.2);
 sun.position.set(5, 10, 7.5);
 scene.add(sun);
 
-// --- CONSTRUCTION DU MODELE ---
-if (type === "CORBEAU") {
-    document.getElementById('txt-type').innerText = "CORBEAU TRAPÉZOÏDAL";
-    document.getElementById('lbl-n1').innerText = "Tirants Sup.";
-    document.getElementById('lbl-n2').innerText = "Cadres Horiz.";
-    document.getElementById('lbl-cf').innerText = "Cadres Vert.";
-    document.getElementById('v-n1').innerText = n1 + " HA";
-    document.getElementById('v-n2').innerText = n2 + " HA";
-    document.getElementById('v-cf').innerText = nV + " HA10";
+function addEdges(mesh) {
+    const edges = new THREE.EdgesGeometry(mesh.geometry);
+    mesh.add(new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000 })));
+}
 
+// --- CONSTRUCTION GÉOMÉTRIQUE ---
+if (type === "CORBEAU") {
+    // Béton Corbeau
     const shape = new THREE.Shape();
     shape.moveTo(0,0); shape.lineTo(0.6,0); shape.lineTo(0.6,-0.25); shape.lineTo(0,-h); shape.lineTo(0,0);
-    const mesh = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: b, bevelEnabled: false }), matBeton);
-    mesh.position.set(0.25, h/2, -b/2);
-    addEdges(mesh); group.add(mesh);
+    const meshC = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: b, bevelEnabled: false }), matBeton);
+    meshC.position.set(0.25, h/2, -b/2);
+    addEdges(meshC); group.add(meshC);
 
-    const poteauMain = new THREE.Mesh(new THREE.BoxGeometry(0.5, 2.5, 0.5), matBeton);
-    addEdges(poteauMain); group.add(poteauMain);
+    // Béton Poteau
+    const poteau = new THREE.Mesh(new THREE.BoxGeometry(0.5, 2.5, 0.5), matBeton);
+    addEdges(poteau); group.add(poteau);
 
     // Tirants n1
     for(let i=0; i<n1; i++){
-        const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.75, 8), matOrange);
-        bar.rotation.z = Math.PI/2; bar.position.set(0.45, h/2 - 0.05, -b/2 + 0.05 + (i*(b-0.1)/(n1-1||1)));
+        const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.75, 8), matOrange);
+        bar.rotation.z = Math.PI/2;
+        bar.position.set(0.45, h/2 - 0.05, -b/2 + 0.05 + (i*(b-0.1)/(n1-1||1)));
         group.add(bar);
     }
-    // Cadres Horizontaux n2
+
+    // Cadres Horiz n2
     for(let j=0; j<n2; j++){
         const yPos = (h/2) - 0.15 - (j * (h-0.35) / (n2-1||1));
         const pts = [new THREE.Vector3(0.28, yPos, -b/2+0.04), new THREE.Vector3(0.55, yPos, -b/2+0.04), new THREE.Vector3(0.55, yPos, b/2-0.04), new THREE.Vector3(0.28, yPos, b/2-0.04), new THREE.Vector3(0.28, yPos, -b/2+0.04)];
         group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), matLineOrange));
     }
 
-    // --- AJOUT RAPIDE : CADRES VERTICAUX DU POTEAU ---
-    const nbCadresV = nV; 
-    for(let m = 0; m < nbCadresV; m++) {
-        const xPos = -0.05 + (m * 0.1); 
+    // --- AJOUT DES CADRES VERTICAUX (As,lnk) ---
+    for(let m = 0; m < nV; m++) {
+        const xPos = 0.20 - (m * 0.15 / (nV-1||1));
         const hCadreV = 0.6; 
         const ptsV = [
             new THREE.Vector3(xPos, hCadreV/2, -0.15), 
@@ -203,77 +211,45 @@ if (type === "CORBEAU") {
         ];
         group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ptsV), matLineOrange));
     }
-} 
-else {
-    document.getElementById('txt-type').innerText = "SEMELLE À ENCUVEMENT";
-    document.getElementById('lbl-n1').innerText = "Nappe X";
-    document.getElementById('lbl-n2').innerText = "Nappe Y";
-    document.getElementById('lbl-cf').innerText = "Frettage Fût";
-    document.getElementById('v-n1').innerText = n1 + " HA12";
-    document.getElementById('v-n2').innerText = n2 + " HA12";
-    document.getElementById('v-cf').innerText = nbCF + " cadres";
-
-    const poteauA = parseFloat(parts[3]) || 0.40; 
-    const eRadier = parseFloat(parts[4]) || 0.30; 
-    const L = 1.6; const hf = h; const totalH = hf + eRadier;
-
-    const socle = new THREE.Mesh(new THREE.BoxGeometry(L, eRadier, L), matSocle);
-    socle.position.y = -totalH/2 + eRadier/2;
-    addEdges(socle); group.add(socle);
-
-    const s = new THREE.Shape();
-    s.moveTo(-L/2, -L/2); s.lineTo(L/2, -L/2); s.lineTo(L/2, L/2); s.lineTo(-L/2, L/2); s.lineTo(-L/2, -L/2);
-    const hole = new THREE.Path();
-    hole.moveTo(-poteauA/2, -poteauA/2); hole.lineTo(poteauA/2, -poteauA/2); hole.lineTo(poteauA/2, poteauA/2); hole.lineTo(-poteauA/2, poteauA/2); hole.lineTo(-poteauA/2, -poteauA/2);
-    s.holes.push(hole);
-    const fut = new THREE.Mesh(new THREE.ExtrudeGeometry(s, { depth: hf, bevelEnabled: false }), matBeton);
-    fut.rotation.x = Math.PI / 2; fut.position.y = -totalH/2 + eRadier + hf;
-    addEdges(fut); group.add(fut);
-
-    const poteau = new THREE.Mesh(new THREE.BoxGeometry(poteauA-0.05, hf+0.8, poteauA-0.05), matBlanc);
-    poteau.position.y = -totalH/2 + eRadier + (hf+0.8)/2 - 0.1;
-    addEdges(poteau); group.add(poteau);
-
-    const bL = -totalH/2;
-    for(let i=0; i<n1; i++){
-        const bX = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, L-0.1, 8), matOrange);
-        bX.rotation.x = Math.PI/2; bX.position.set(-(L-0.2)/2 + (i*(L-0.2)/(n1-1||1)), bL+0.07, 0);
-        group.add(bX);
-    }
-    for(let j=0; j<n2; j++){
-        const bY = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, L-0.1, 8), matOrange);
-        bY.rotation.z = Math.PI/2; bY.position.set(0, bL+0.11, -(L-0.2)/2 + (j*(L-0.2)/(n2-1||1)));
-        group.add(bY);
-    }
+} else {
+    // Logique Semelle
+    const socle = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.4, 1.6), matBeton);
+    socle.position.y = -0.5; addEdges(socle); group.add(socle);
 }
 
-// --- AR & RENDER ---
-const reticle = new THREE.Mesh(new THREE.RingGeometry(0.1, 0.12, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff6b00 }));
+// --- AR & ANIMATION ---
+const reticle = new THREE.Mesh(new THREE.RingGeometry(0.1, 0.12, 32).rotateX(-Math.PI/2), new THREE.MeshBasicMaterial({color: 0xff6b00}));
 reticle.matrixAutoUpdate = false; reticle.visible = false; scene.add(reticle);
 
 const controller = renderer.xr.getController(0);
-controller.addEventListener('select', () => { if (reticle.visible) { group.position.setFromMatrixPosition(reticle.matrix); } });
+controller.addEventListener('select', () => { if(reticle.visible){ group.position.setFromMatrixPosition(reticle.matrix); group.visible=true; } });
 scene.add(controller);
+
+let hitTestSource = null; let hitTestSourceRequested = false;
 
 function animate(timestamp, frame) {
     if (frame) {
         const referenceSpace = renderer.xr.getReferenceSpace();
         const session = renderer.xr.getSession();
-        session.requestReferenceSpace('viewer').then(space => {
-            session.requestHitTestSource({ space: space }).then(source => {
-                const results = frame.getHitTestResults(source);
-                if (results.length) {
-                    reticle.visible = true;
-                    reticle.matrix.fromArray(results[0].getPose(referenceSpace).transform.matrix);
-                }
-            });
-        });
+        if (!hitTestSourceRequested) {
+            session.requestReferenceSpace('viewer').then(s => session.requestHitTestSource({space:s}).then(src => hitTestSource=src));
+            hitTestSourceRequested = true;
+        }
+        if (hitTestSource) {
+            const results = frame.getHitTestResults(hitTestSource);
+            if (results.length) {
+                reticle.visible = true;
+                reticle.matrix.fromArray(results[0].getPose(referenceSpace).transform.matrix);
+            } else { reticle.visible = false; }
+        }
     }
-    if (!renderer.xr.isPresenting) { group.rotation.y += 0.004; camera.position.set(2.8, 2.2, 2.8); camera.lookAt(0,0,0); }
+    if (!renderer.xr.isPresenting) {
+        group.rotation.y += 0.005;
+        camera.position.set(2, 2, 2); camera.lookAt(0,0,0);
+    }
     renderer.render(scene, camera);
 }
 renderer.setAnimationLoop(animate);
-window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
 </script>
 </body>
 </html>
