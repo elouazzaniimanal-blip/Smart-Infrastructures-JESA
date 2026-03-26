@@ -63,7 +63,7 @@
         <div class="data-row"><span class="label">Section théorique (As)</span><span id="v-as" class="val-green">---</span></div>
         <div class="data-row"><span id="lbl-n1" class="label">---</span><span id="v-n1" class="val">---</span></div>
         <div class="data-row"><span id="lbl-n2" class="label">---</span><span id="v-n2" class="val">---</span></div>
-        <div class="data-row"><span id="lbl-spec" class="label">Cadres</span><span id="v-spec" class="val">---</span></div>
+        <div class="data-row"><span id="lbl-cf" class="label">Cadres</span><span id="v-cf" class="val">---</span></div>
 
         <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 15px 0;">
 
@@ -84,22 +84,22 @@ import { ARButton } from 'https://unpkg.com/three@0.128.0/examples/jsm/webxr/ARB
 const p = new URLSearchParams(window.location.search);
 const type = (p.get('type') || 'CORBEAU').toUpperCase();
 
-let h_raw = parseFloat(p.get('h')) || 450; 
-let h = h_raw > 10 ? h_raw/1000 : h_raw; 
-let b_raw = parseFloat(p.get('b')) || 300; 
+let h_raw = parseFloat(p.get('h')) || 600;
+let h = h_raw > 10 ? h_raw/1000 : h_raw;
+let b_raw = parseFloat(p.get('b')) || 400;
 let b = b_raw > 10 ? b_raw/1000 : b_raw;
 
-const asStr = p.get('as') || '0.00*0*0*0***'; 
+const asStr = p.get('as') || '12.50*8*6*2*0.30*3'; 
 const parts = asStr.split('*').map(s => s.trim());
 
-const sectionValue = (parts[0] && parts[0] !== "0.00") ? parts[0] : "---";
-const n1 = parseInt(parts[1]) || 0; 
-const n2 = parseInt(parts[2]) || 0; 
-const nV = parseInt(parts[3]) || 0; 
+const sectionValue = (parts[0] && parts[0] !== "0.00") ? parts[0] : "12.50";
+const n1 = parseInt(parts[1]) || 8; 
+const n2 = parseInt(parts[2]) || 6; 
+const nV = parseInt(parts[3]) || 2; // Récupération NbCadresVerticaux
+const nbCF = parseInt(parts[5]) || 3; 
 
 document.getElementById('v-as').innerText = sectionValue + " cm²";
 
-// --- LOGIQUE METIER ---
 const btnNdc = document.getElementById('btn-ndc');
 if (type === "CORBEAU") {
     btnNdc.onclick = () => alert('Note de Structure : WinCorbeau\nEurocode 2 : CONFORME ✅');
@@ -162,10 +162,10 @@ if (type === "CORBEAU") {
     document.getElementById('txt-type').innerText = "CORBEAU TRAPÉZOÏDAL";
     document.getElementById('lbl-n1').innerText = "Tirants Sup.";
     document.getElementById('lbl-n2').innerText = "Cadres Horiz.";
-    document.getElementById('lbl-spec').innerText = "Cadres Vert.";
+    document.getElementById('lbl-cf').innerText = "Cadres Vert.";
     document.getElementById('v-n1').innerText = n1 + " HA";
-    document.getElementById('v-n2').innerText = n2 + " HA8";
-    document.getElementById('v-spec').innerText = nV + " HA10";
+    document.getElementById('v-n2').innerText = n2 + " HA";
+    document.getElementById('v-cf').innerText = nV + " HA10";
 
     const shape = new THREE.Shape();
     shape.moveTo(0,0); shape.lineTo(0.6,0); shape.lineTo(0.6,-0.25); shape.lineTo(0,-h); shape.lineTo(0,0);
@@ -176,21 +176,42 @@ if (type === "CORBEAU") {
     const poteauMain = new THREE.Mesh(new THREE.BoxGeometry(0.5, 2.5, 0.5), matBeton);
     addEdges(poteauMain); group.add(poteauMain);
 
+    // Tirants n1
     for(let i=0; i<n1; i++){
         const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.75, 8), matOrange);
         bar.rotation.z = Math.PI/2; bar.position.set(0.45, h/2 - 0.05, -b/2 + 0.05 + (i*(b-0.1)/(n1-1||1)));
         group.add(bar);
+    }
+    // Cadres Horizontaux n2
+    for(let j=0; j<n2; j++){
+        const yPos = (h/2) - 0.15 - (j * (h-0.35) / (n2-1||1));
+        const pts = [new THREE.Vector3(0.28, yPos, -b/2+0.04), new THREE.Vector3(0.55, yPos, -b/2+0.04), new THREE.Vector3(0.55, yPos, b/2-0.04), new THREE.Vector3(0.28, yPos, b/2-0.04), new THREE.Vector3(0.28, yPos, -b/2+0.04)];
+        group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), matLineOrange));
+    }
+
+    // --- AJOUT RAPIDE : CADRES VERTICAUX DU POTEAU ---
+    const nbCadresV = nV; 
+    for(let m = 0; m < nbCadresV; m++) {
+        const xPos = -0.05 + (m * 0.1); 
+        const hCadreV = 0.6; 
+        const ptsV = [
+            new THREE.Vector3(xPos, hCadreV/2, -0.15), 
+            new THREE.Vector3(xPos, hCadreV/2, 0.15), 
+            new THREE.Vector3(xPos, -hCadreV/2, 0.15), 
+            new THREE.Vector3(xPos, -hCadreV/2, -0.15),
+            new THREE.Vector3(xPos, hCadreV/2, -0.15)
+        ];
+        group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ptsV), matLineOrange));
     }
 } 
 else {
     document.getElementById('txt-type').innerText = "SEMELLE À ENCUVEMENT";
     document.getElementById('lbl-n1').innerText = "Nappe X";
     document.getElementById('lbl-n2').innerText = "Nappe Y";
-    document.getElementById('lbl-spec').innerText = "Frettage Fût";
+    document.getElementById('lbl-cf').innerText = "Frettage Fût";
     document.getElementById('v-n1').innerText = n1 + " HA12";
     document.getElementById('v-n2').innerText = n2 + " HA12";
-    const nbCF = parseInt(parts[5]) || 4;
-    document.getElementById('v-spec').innerText = nbCF + " cadres";
+    document.getElementById('v-cf').innerText = nbCF + " cadres";
 
     const poteauA = parseFloat(parts[3]) || 0.40; 
     const eRadier = parseFloat(parts[4]) || 0.30; 
@@ -252,6 +273,7 @@ function animate(timestamp, frame) {
     renderer.render(scene, camera);
 }
 renderer.setAnimationLoop(animate);
+window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
 </script>
 </body>
 </html>
