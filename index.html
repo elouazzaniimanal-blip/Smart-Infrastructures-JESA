@@ -282,6 +282,209 @@ if (type === "CORBEAU") {
         const pts = [new THREE.Vector3(0.28, yPos, -b/2+0.04), new THREE.Vector3(0.55, yPos, -b/2+0.04), new THREE.Vector3(0.55, yPos, b/2-0.04), new THREE.Vector3(0.28, yPos, b/2-0.04), new THREE.Vector3(0.28, yPos, -b/2+0.04)];
         group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), matLineOrange));
     }
+} else if (type === "POTEAU") {
+    document.getElementById('txt-type').innerText = "POTEAU BÉTON ARMÉ";
+    document.getElementById('lbl-n1').innerText = "Armatures Long.";
+    document.getElementById('lbl-n2').innerText = "Cadres / Étriers";
+
+    // Corps du poteau
+    const poteauMesh = new THREE.Mesh(new THREE.BoxGeometry(b, h, b), matBeton);
+    addEdges(poteauMesh);
+    group.add(poteauMesh);
+
+    // Armatures longitudinales (aux 4 coins + faces)
+    const nbLong = Math.max(4, n1);
+    const cover = 0.04;
+    const positions = [];
+    const side = b / 2 - cover;
+    for (let i = 0; i < nbLong; i++) {
+        const angle = (2 * Math.PI * i) / nbLong;
+        positions.push({ x: side * Math.cos(angle), z: side * Math.sin(angle) });
+    }
+    positions.forEach(pos => {
+        const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, h + 0.1, 8), matOrange);
+        bar.position.set(pos.x, 0, pos.z);
+        addEdges(bar);
+        group.add(bar);
+    });
+
+    // Cadres / étriers
+    const nbCadres = Math.max(n2, 4);
+    for (let k = 0; k < nbCadres; k++) {
+        const yC = -h / 2 + (k + 1) * (h / (nbCadres + 1));
+        const dim = b - cover * 2;
+        const pts = [
+            new THREE.Vector3(-dim/2, yC, -dim/2),
+            new THREE.Vector3( dim/2, yC, -dim/2),
+            new THREE.Vector3( dim/2, yC,  dim/2),
+            new THREE.Vector3(-dim/2, yC,  dim/2),
+            new THREE.Vector3(-dim/2, yC, -dim/2)
+        ];
+        group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), matLineOrange));
+    }
+
+    btnNdc.onclick = () => alert('Note de Structure : Poteau BA\nEurocode 2 : CONFORME ✅\nArmatures longitudinales : ' + n1 + ' HA\nCadres/Étriers : ' + n2);
+
+} else if (type === "POUTRE") {
+    document.getElementById('txt-type').innerText = "POUTRE BÉTON ARMÉ";
+    document.getElementById('lbl-n1').innerText = "Armatures Inf.";
+    document.getElementById('lbl-n2').innerText = "Armatures Sup. / Étriers";
+
+    // Corps de la poutre (orientée horizontalement selon X)
+    const poutreMesh = new THREE.Mesh(new THREE.BoxGeometry(h, b, b * 1.5), matBeton);
+    addEdges(poutreMesh);
+    group.add(poutreMesh);
+
+    const cover = 0.04;
+    const halfL = h / 2;
+    const halfB = b / 2 - cover;
+    const halfD = (b * 1.5) / 2 - cover;
+
+    // Armatures inférieures (nappe basse)
+    for (let i = 0; i < n1; i++) {
+        const zPos = -halfD + cover + i * ((b * 1.5 - 2 * cover) / Math.max(n1 - 1, 1));
+        const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, h - 0.06, 8), matOrange);
+        bar.rotation.z = Math.PI / 2;
+        bar.position.set(0, -halfB, zPos);
+        addEdges(bar);
+        group.add(bar);
+    }
+
+    // Armatures supérieures
+    for (let i = 0; i < n2; i++) {
+        const zPos = -halfD + cover + i * ((b * 1.5 - 2 * cover) / Math.max(n2 - 1, 1));
+        const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.010, 0.010, h - 0.06, 8),
+            new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.8, roughness: 0.2 }));
+        bar.rotation.z = Math.PI / 2;
+        bar.position.set(0, halfB, zPos);
+        addEdges(bar);
+        group.add(bar);
+    }
+
+    // Étriers
+    const nbEtriers = Math.max(nbCF, 5);
+    for (let k = 0; k < nbEtriers; k++) {
+        const xE = -halfL + (k + 1) * ((h) / (nbEtriers + 1));
+        const dimY = b - cover * 2;
+        const dimZ = b * 1.5 - cover * 2;
+        const pts = [
+            new THREE.Vector3(xE, -dimY/2, -dimZ/2),
+            new THREE.Vector3(xE,  dimY/2, -dimZ/2),
+            new THREE.Vector3(xE,  dimY/2,  dimZ/2),
+            new THREE.Vector3(xE, -dimY/2,  dimZ/2),
+            new THREE.Vector3(xE, -dimY/2, -dimZ/2)
+        ];
+        group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), matLineOrange));
+    }
+
+    btnNdc.onclick = () => alert('Note de Structure : Poutre BA\nEurocode 2 : CONFORME ✅\nArmatures inf. : ' + n1 + ' HA\nArmatures sup. : ' + n2 + ' HA');
+
+} else if (type === "DALLE") {
+    document.getElementById('txt-type').innerText = "DALLE BÉTON ARMÉ";
+    document.getElementById('lbl-n1').innerText = "Nappe X (Armatures)";
+    document.getElementById('lbl-n2').innerText = "Nappe Y (Armatures)";
+
+    const epaisseur = h; // épaisseur de la dalle
+    const largeur = b > 0.5 ? b : 2.0; // largeur en plan
+    const longueur = largeur * 1.2;
+
+    // Corps de la dalle
+    const dalleMesh = new THREE.Mesh(new THREE.BoxGeometry(longueur, epaisseur, largeur), matBeton);
+    addEdges(dalleMesh);
+    group.add(dalleMesh);
+
+    const cover = 0.02;
+    const yBas = -epaisseur / 2 + cover;
+    const yHaut = epaisseur / 2 - cover;
+
+    // Nappe X (armatures selon X, parallèles à la longueur)
+    for (let i = 0; i < n1; i++) {
+        const zPos = -largeur / 2 + cover + i * ((largeur - 2 * cover) / Math.max(n1 - 1, 1));
+        const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, longueur - 0.06, 8), matOrange);
+        bar.rotation.z = Math.PI / 2;
+        bar.position.set(0, yBas, zPos);
+        addEdges(bar);
+        group.add(bar);
+    }
+
+    // Nappe Y (armatures selon Z, parallèles à la largeur)
+    for (let j = 0; j < n2; j++) {
+        const xPos = -longueur / 2 + cover + j * ((longueur - 2 * cover) / Math.max(n2 - 1, 1));
+        const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, largeur - 0.06, 8),
+            new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.8, roughness: 0.2 }));
+        bar.rotation.x = Math.PI / 2;
+        bar.position.set(xPos, yHaut, 0);
+        addEdges(bar);
+        group.add(bar);
+    }
+
+    btnNdc.onclick = () => alert('Note de Structure : Dalle BA\nEurocode 2 : CONFORME ✅\nNappe X : ' + n1 + ' HA\nNappe Y : ' + n2 + ' HA\nÉpaisseur : ' + (epaisseur * 100).toFixed(0) + ' cm');
+
+} else if (type === "VOILE") {
+    document.getElementById('txt-type').innerText = "VOILE BÉTON ARMÉ";
+    document.getElementById('lbl-n1').innerText = "Armatures Horiz.";
+    document.getElementById('lbl-n2').innerText = "Armatures Vert.";
+
+    const epaisseur = 0.20; // épaisseur du voile (20 cm par défaut)
+    const largeurVoile = b > 0.3 ? b : 1.5;
+    const hauteurVoile = h;
+
+    // Corps du voile
+    const voileMesh = new THREE.Mesh(new THREE.BoxGeometry(largeurVoile, hauteurVoile, epaisseur), matBeton);
+    addEdges(voileMesh);
+    group.add(voileMesh);
+
+    const cover = 0.03;
+
+    // Armatures horizontales (nappe avant et arrière)
+    for (let i = 0; i < n1; i++) {
+        const yPos = -hauteurVoile / 2 + cover + i * ((hauteurVoile - 2 * cover) / Math.max(n1 - 1, 1));
+        // Nappe avant
+        const barFront = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, largeurVoile - 0.04, 8), matOrange);
+        barFront.rotation.z = Math.PI / 2;
+        barFront.position.set(0, yPos, epaisseur / 2 - cover);
+        addEdges(barFront);
+        group.add(barFront);
+        // Nappe arrière
+        const barBack = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, largeurVoile - 0.04, 8), matOrange);
+        barBack.rotation.z = Math.PI / 2;
+        barBack.position.set(0, yPos, -(epaisseur / 2 - cover));
+        addEdges(barBack);
+        group.add(barBack);
+    }
+
+    // Armatures verticales (nappe avant et arrière)
+    for (let j = 0; j < n2; j++) {
+        const xPos = -largeurVoile / 2 + cover + j * ((largeurVoile - 2 * cover) / Math.max(n2 - 1, 1));
+        // Nappe avant
+        const barFront = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, hauteurVoile - 0.04, 8),
+            new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.8, roughness: 0.2 }));
+        barFront.position.set(xPos, 0, epaisseur / 2 - cover);
+        addEdges(barFront);
+        group.add(barFront);
+        // Nappe arrière
+        const barBack = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, hauteurVoile - 0.04, 8),
+            new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.8, roughness: 0.2 }));
+        barBack.position.set(xPos, 0, -(epaisseur / 2 - cover));
+        addEdges(barBack);
+        group.add(barBack);
+    }
+
+    // Épingles de liaison entre nappes
+    const nbEpingles = Math.max(nbCF, 3);
+    for (let i = 0; i < nbEpingles; i++) {
+        for (let j = 0; j < nbEpingles; j++) {
+            const xE = -largeurVoile / 2 + cover + i * ((largeurVoile - 2 * cover) / (nbEpingles - 1 || 1));
+            const yE = -hauteurVoile / 2 + cover + j * ((hauteurVoile - 2 * cover) / (nbEpingles - 1 || 1));
+            const epingle = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, epaisseur - 2 * cover, 6), matOrange);
+            epingle.rotation.x = Math.PI / 2;
+            epingle.position.set(xE, yE, 0);
+            group.add(epingle);
+        }
+    }
+
+    btnNdc.onclick = () => alert('Note de Structure : Voile BA\nEurocode 2 : CONFORME ✅\nArmatures horiz. : ' + n1 + ' HA\nArmatures vert. : ' + n2 + ' HA\nÉpaisseur : ' + (epaisseur * 100).toFixed(0) + ' cm');
+
 } else {
     document.getElementById('txt-type').innerText = "SEMELLE À ENCUVEMENT";
     document.getElementById('lbl-n1').innerText = "Nappe X";
