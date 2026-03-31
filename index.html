@@ -105,11 +105,6 @@ document.getElementById('v-n2').innerText = n2 + " HA";
 document.getElementById('v-cf').innerText = n2 + " cadres (Resserrés)";
 
 const btnNdc = document.getElementById('btn-ndc');
-if (type === "CORBEAU") {
-    btnNdc.onclick = () => alert('Note de Structure : WinCorbeau\nEurocode 2 : CONFORME ✅\nL\'Eurocode 2 impose de resserrer ces cadres dans la zone où le corbeau "pousse" sur le poteau pour éviter que le béton n\'éclate.');
-} else {
-    btnNdc.onclick = () => alert('Note de Structure : WinSemelle\nEurocode 2 : CONFORME ✅');
-}
 
 // --- FONCTION DE CALCUL DE MATURIMÉTRIE (Loi d'Arrhenius) ---
 window.calculerMaturite = function(donneesCapteurUsine) {
@@ -282,6 +277,103 @@ if (type === "CORBEAU") {
         const pts = [new THREE.Vector3(0.28, yPos, -b/2+0.04), new THREE.Vector3(0.55, yPos, -b/2+0.04), new THREE.Vector3(0.55, yPos, b/2-0.04), new THREE.Vector3(0.28, yPos, b/2-0.04), new THREE.Vector3(0.28, yPos, -b/2+0.04)];
         group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), matLineOrange));
     }
+
+    btnNdc.onclick = () => alert('Note de Structure : WinCorbeau\nEurocode 2 : CONFORME ✅\nL\'Eurocode 2 impose de resserrer ces cadres dans la zone où le corbeau "pousse" sur le poteau pour éviter que le béton n\'éclate.');
+
+} else if (type === "DC") {
+    document.getElementById('txt-type').innerText = "DALLE DE COMPRESSION";
+    document.getElementById('lbl-n1').innerText = "Treillis Soudé (TS)";
+    document.getElementById('lbl-n2').innerText = "Poutrelles / Travée";
+
+    const eDC    = Math.max(h, 0.05);   // épaisseur dalle de compression (min 5 cm)
+    const portee = b > 0.5 ? b : 2.4;  // portée de la travée
+    const nbPoutrellesAffich = Math.max(n2, 3);
+    const largeurTravee = portee * 0.8;
+    const ePoutrelle = 0.16;            // hauteur poutrelle préfabriquée (16 cm)
+    const bPoutrelle = 0.12;            // largeur âme poutrelle
+    const bSemelle   = 0.30;            // largeur semelle poutrelle
+
+    // Corps de la dalle de compression (nappe supérieure fine)
+    const dalleDC = new THREE.Mesh(new THREE.BoxGeometry(portee, eDC, largeurTravee), matBeton);
+    dalleDC.position.y = ePoutrelle + eDC / 2;
+    addEdges(dalleDC);
+    group.add(dalleDC);
+
+    // Poutrelles préfabriquées en T inversé
+    const espacePoutrelle = largeurTravee / Math.max(nbPoutrellesAffich - 1, 1);
+    for (let k = 0; k < nbPoutrellesAffich; k++) {
+        const zP = -largeurTravee / 2 + k * espacePoutrelle;
+
+        // Âme (rib) de la poutrelle
+        const ame = new THREE.Mesh(new THREE.BoxGeometry(portee, ePoutrelle, bPoutrelle), matSocle);
+        ame.position.set(0, ePoutrelle / 2, zP);
+        addEdges(ame);
+        group.add(ame);
+
+        // Semelle inférieure (table basse)
+        const semelle = new THREE.Mesh(new THREE.BoxGeometry(portee, 0.04, bSemelle),
+            new THREE.MeshStandardMaterial({ color: 0x555555, transparent: true, opacity: 0.5, roughness: 0.9 }));
+        semelle.position.set(0, 0.02, zP);
+        addEdges(semelle);
+        group.add(semelle);
+
+        // Armatures longitudinales de la poutrelle (2 barres)
+        [-bPoutrelle * 0.3, bPoutrelle * 0.3].forEach(dz => {
+            const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.010, 0.010, portee - 0.04, 8), matOrange);
+            bar.rotation.z = Math.PI / 2;
+            bar.position.set(0, 0.04, zP + dz);
+            group.add(bar);
+        });
+    }
+
+    // Entrevous (blocs de remplissage entre poutrelles) — représentés par des parallélépipèdes
+    if (nbPoutrellesAffich > 1) {
+        const nbEntrevous = nbPoutrellesAffich - 1;
+        for (let k = 0; k < nbEntrevous; k++) {
+            const zE = -largeurTravee / 2 + k * espacePoutrelle + espacePoutrelle / 2;
+            const largeurEntrevous = espacePoutrelle - bPoutrelle - 0.01;
+            if (largeurEntrevous > 0.01) {
+                const entrevous = new THREE.Mesh(
+                    new THREE.BoxGeometry(portee - 0.1, ePoutrelle - 0.02, largeurEntrevous),
+                    new THREE.MeshStandardMaterial({ color: 0x8b6914, transparent: true, opacity: 0.45, roughness: 1.0 })
+                );
+                entrevous.position.set(0, (ePoutrelle - 0.02) / 2 + 0.01, zE);
+                addEdges(entrevous);
+                group.add(entrevous);
+            }
+        }
+    }
+
+    // Treillis soudé de la dalle de compression (mailles selon X et Z)
+    const yTS = ePoutrelle + eDC - 0.015;
+    const nbMaillesX = Math.max(n1, 5);
+    const nbMaillesZ = Math.max(n1, 5);
+    // Fils selon X
+    for (let i = 0; i < nbMaillesZ; i++) {
+        const zF = -largeurTravee / 2 + i * (largeurTravee / Math.max(nbMaillesZ - 1, 1));
+        const fil = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, portee - 0.04, 6), matOrange);
+        fil.rotation.z = Math.PI / 2;
+        fil.position.set(0, yTS, zF);
+        group.add(fil);
+    }
+    // Fils selon Z
+    for (let j = 0; j < nbMaillesX; j++) {
+        const xF = -portee / 2 + j * (portee / Math.max(nbMaillesX - 1, 1));
+        const fil = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, largeurTravee - 0.04, 6),
+            new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.8, roughness: 0.2 }));
+        fil.rotation.x = Math.PI / 2;
+        fil.position.set(xF, yTS + 0.008, 0);
+        group.add(fil);
+    }
+
+    btnNdc.onclick = () => alert(
+        'Note de Structure : Dalle de Compression (DC)\nEurocode 2 : CONFORME ✅\n' +
+        'Épaisseur DC : ' + (eDC * 100).toFixed(0) + ' cm\n' +
+        'Portée : ' + (portee * 100).toFixed(0) + ' cm\n' +
+        'Poutrelles : ' + nbPoutrellesAffich + '\n' +
+        'Treillis Soudé : ' + n1 + ' mailles'
+    );
+
 } else if (type === "POTEAU") {
     document.getElementById('txt-type').innerText = "POTEAU BÉTON ARMÉ";
     document.getElementById('lbl-n1').innerText = "Armatures Long.";
@@ -553,6 +645,8 @@ if (type === "CORBEAU") {
         addEdges(bY);
         group.add(bY);
     }
+
+    btnNdc.onclick = () => alert('Note de Structure : WinSemelle\nEurocode 2 : CONFORME ✅');
 }
 
 // --- CONFIGURATION AR (HIT TEST & ANCRAGE) ---
