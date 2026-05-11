@@ -40,11 +40,12 @@ import { ARButton } from 'https://unpkg.com/three@0.128.0/examples/jsm/webxr/ARB
 const p = new URLSearchParams(window.location.search);
 const decode = (s) => s ? decodeURIComponent(s.replace(/\+/g, ' ')).replace(/_/g, ' ') : '---';
 
-// --- DATA BINDING HUD ---
-document.getElementById('m-id').innerText = decode(p.get('id'));
-document.getElementById('m-date').innerText = decode(p.get('date'));
-document.getElementById('v-as').innerText = (p.get('as') || '0') + " cm²";
+// --- CORRECTION 1 : AFFICHAGE AS (cm2) ---
+let rawAs = parseFloat(p.get('as')) || 0;
+let displayAs = rawAs > 100 ? (rawAs / 100).toFixed(2) : rawAs.toFixed(2);
+document.getElementById('v-as').innerText = displayAs + " cm²";
 
+// --- CORRECTION 2 : TEXTES DYNAMIQUES (n1, n2, at) ---
 const n1_text = decode(p.get('n1')) || "8 HA12";
 const n2_text = decode(p.get('n2')) || "6 HA10";
 const at_text = decode(p.get('at')) || "3 HA8";
@@ -56,6 +57,7 @@ document.getElementById('v-at').innerText = at_text;
 // --- PARAMETRES GEOMETRIQUES ---
 let h = (parseFloat(p.get('h')) || 600) / 1000;
 let b = (parseFloat(p.get('b')) || 400) / 1000;
+
 const numN1 = parseInt(n1_text) || 8;
 const numN2 = parseInt(n2_text) || 6;
 const numAt = parseInt(at_text) || 3;
@@ -71,7 +73,6 @@ document.body.appendChild(ARButton.createButton(renderer));
 const group = new THREE.Group();
 scene.add(group);
 
-// Matériaux
 const matBeton = new THREE.MeshStandardMaterial({ color: 0x888888, transparent: true, opacity: 0.3 });
 const matAs = new THREE.LineBasicMaterial({ color: 0xff6b00, linewidth: 2 });
 const matAh = new THREE.LineBasicMaterial({ color: 0x00ccff });
@@ -102,23 +103,25 @@ const meshC = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: b, bevelE
 meshC.position.set(xStartCorb, yOffset, zG);
 group.add(meshC);
 
-// --- 1. AS : TIRANTS (ET CALCUL DES POSITIONS Z POUR SUPERPOSITION) ---
+// --- 1. AS : TIRANTS (CORRIGÉ POUR ARRÊT À L'EXTRÉMITÉ) ---
 const zPositionsExtremes = [];
 for (let i = 0; i < numN1; i++) {
     const z = zG + 0.05 + (i * (b - 0.1) / (numN1 - 1 || 1));
-    if (i === 0 || i === numN1 - 1) zPositionsExtremes.push(z); // On garde les bords
+    if (i === 0 || i === numN1 - 1) zPositionsExtremes.push(z);
 
     const yBas = yOffset - h + 0.05;
+    const xExtremiteNez = xStartCorb + Lcorb - 0.05; // Position X au bout du corbeau
+
     addPolyline([
         new THREE.Vector3(-0.15, yBas, z),
         new THREE.Vector3(-0.15, yOffset - 0.03, z),
-        new THREE.Vector3(xStartCorb + Lcorb - 0.05, yOffset - 0.03, z),
-        new THREE.Vector3(xStartCorb + Lcorb - 0.05, yOffset - (hNez - 0.03), z),
-        new THREE.Vector3(xStartCorb + 0.1, yBas, z)
+        new THREE.Vector3(xExtremiteNez, yOffset - 0.03, z), // Filant sup jusqu'au bout
+        new THREE.Vector3(xExtremiteNez, yOffset - (hNez - 0.03), z), // Descente au nez
+        new THREE.Vector3(xStartCorb + 0.05, yBas, z) // Retour à la base inclinée
     ], matAs);
 }
 
-// --- 2. ARMATURE POTEAU (SUPERPOSÉES AUX AS EXTRÊMES) ---
+// --- 2. ARMATURE POTEAU ---
 const xPositionsPoteau = [-0.15, 0.15]; 
 xPositionsPoteau.forEach(x => {
     zPositionsExtremes.forEach(z => {
