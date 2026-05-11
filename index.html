@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>JESA BIM 3D - Corbeau Final avec At</title>
+    <title>JESA BIM 3D - Corbeau Positionné</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Inter:wght@400;600&display=swap');
@@ -10,28 +10,21 @@
         #hud { 
             position: absolute; top: 20px; left: 20px; color: white; 
             background: rgba(10, 10, 10, 0.95); padding: 20px; 
-            border-left: 6px solid #ff6b00; z-index: 100;
-            border-radius: 4px; box-shadow: 0 15px 35px rgba(0,0,0,0.7);
-            min-width: 280px;
+            border-left: 6px solid #ff6b00; z-index: 100; border-radius: 4px;
         }
         .logo { font-family: 'Orbitron', sans-serif; color: #ff6b00; font-size: 14px; margin-bottom: 15px; }
-        .info-massif { font-size: 12px; line-height: 1.6; margin-bottom: 15px; color: #ccc; }
         .type-title { font-size: 14px; font-weight: 700; color: #ffffff; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid #444; }
         .data-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 12px; border-bottom: 1px dashed rgba(255,255,255,0.1); }
         .val { color: #ff6b00; font-weight: bold; }
-        .val-at { color: #2ecc71; font-weight: bold; }
-        .val-ah { color: #00ccff; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div id="hud">
         <div class="logo">JESA SMART MONITORING</div>
-        <div class="info-massif">ID : MS-ST-2024-001 | 14/05/2026</div>
-        <div id="txt-type" class="type-title">CORBEAU JESA MASTER</div>
-        <div class="data-row"><span class="label">As (Tirants inclinés)</span><span id="v-n1" class="val">---</span></div>
-        <div class="data-row"><span class="label">Ah (Horizontales)</span><span id="v-ah" class="val-ah">---</span></div>
-        <div class="data-row"><span class="label">At (Cadres verticaux)</span><span id="v-at" class="val-at">---</span></div>
+        <div class="type-title">POSITIONNEMENT ÉLEVÉ</div>
+        <div class="data-row"><span class="label">As (Tirants)</span><span id="v-n1" class="val">---</span></div>
+        <div class="data-row"><span class="label">At (Cadres)</span><span id="v-at" class="val">---</span></div>
     </div>
 
 <script type="module">
@@ -40,16 +33,14 @@ import { ARButton } from 'https://unpkg.com/three@0.128.0/examples/jsm/webxr/ARB
 const p = new URLSearchParams(window.location.search);
 let h = (parseFloat(p.get('h')) || 600) / 1000;
 let b = (parseFloat(p.get('b')) || 400) / 1000;
+const parts = (p.get('as') || '12.5*8*6*0.4*0.3*3').split('*');
 
-const asStr = p.get('as') || '12.50*8*6*0.40*0.30*3'; 
-const parts = asStr.split('*').map(s => s.trim());
-const n1 = parseInt(parts[1]) || 8;  // As
-const n2 = parseInt(parts[2]) || 6;  // Ah
-const nAt = parseInt(parts[5]) || 3; // At (Cadres de frettage)
+const n1 = parseInt(parts[1]) || 8;
+const n2 = parseInt(parts[2]) || 6;
+const nAt = parseInt(parts[5]) || 3;
 
 document.getElementById('v-n1').innerText = n1 + " HA";
-document.getElementById('v-ah').innerText = n2 + " HA";
-document.getElementById('v-at').innerText = nAt + " Cadres";
+document.getElementById('v-at').innerText = nAt + " HA";
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.01, 1000);
@@ -63,54 +54,55 @@ const group = new THREE.Group();
 scene.add(group);
 
 const matBeton = new THREE.MeshStandardMaterial({ color: 0x888888, transparent: true, opacity: 0.3 });
-const matAs = new THREE.LineBasicMaterial({ color: 0xff6b00 }); // Orange
-const matAh = new THREE.LineBasicMaterial({ color: 0x00ccff }); // Bleu
-const matAt = new THREE.LineBasicMaterial({ color: 0x2ecc71 }); // Vert (At)
+const matAs = new THREE.LineBasicMaterial({ color: 0xff6b00 });
+const matAh = new THREE.LineBasicMaterial({ color: 0x00ccff });
+const matAt = new THREE.LineBasicMaterial({ color: 0x2ecc71 });
 
 scene.add(new THREE.AmbientLight(0xffffff, 0.8));
 const sun = new THREE.DirectionalLight(0xffffff, 1);
-sun.position.set(5, 5, 5);
+sun.position.set(5, 10, 5);
 scene.add(sun);
 
 function addPolyline(points, material) {
     const geom = new THREE.BufferGeometry().setFromPoints(points);
-    const line = new THREE.Line(geom, material);
-    group.add(line);
+    group.add(new THREE.Line(geom, material));
 }
 
-// --- GÉOMÉTRIE BÉTON ---
+// --- CONFIGURATION POSITION ---
+const yOffset = 0.5; // Décale l'ensemble vers le haut du poteau
 const Lcorb = 0.75;
 const hNez = 0.25;
-const yTop = h / 2;
 const zG = -b / 2;
 const xStartCorb = 0.25;
 
+// Poteau (référence fixe)
+group.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 3.0, 0.5), matBeton));
+
+// Béton Corbeau (décalé vers le haut)
 const shape = new THREE.Shape();
 shape.moveTo(0, 0); shape.lineTo(Lcorb, 0); shape.lineTo(Lcorb, -hNez); shape.lineTo(0, -h); shape.lineTo(0, 0);
 const meshC = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: b, bevelEnabled: false }), matBeton);
-meshC.position.set(xStartCorb, yTop, zG);
+meshC.position.set(xStartCorb, yOffset, zG);
 group.add(meshC);
 
-group.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 2.5, 0.5), matBeton));
+// --- FERRAILLAGE (DÉCALÉ DE yOffset) ---
 
-// --- 1. AS : TIRANTS INCLINÉS (FORME ROUGE) ---
+// As : Tirants
 for (let i = 0; i < n1; i++) {
     const z = zG + 0.05 + (i * (b - 0.1) / (n1 - 1 || 1));
-    const ptsU = [
-        new THREE.Vector3(-0.20, yTop - 0.15, z), 
-        new THREE.Vector3(-0.20, yTop - 0.03, z),        
-        new THREE.Vector3(xStartCorb + Lcorb - 0.05, yTop - 0.03, z),          
-        new THREE.Vector3(xStartCorb + Lcorb - 0.05, yTop - (hNez - 0.03), z),
-        new THREE.Vector3(xStartCorb + 0.1, yTop - (h - 0.05), z)
-    ];
-    addPolyline(ptsU, matAs);
+    addPolyline([
+        new THREE.Vector3(-0.20, yOffset - 0.15, z), 
+        new THREE.Vector3(-0.20, yOffset - 0.03, z),        
+        new THREE.Vector3(xStartCorb + Lcorb - 0.05, yOffset - 0.03, z),          
+        new THREE.Vector3(xStartCorb + Lcorb - 0.05, yOffset - (hNez - 0.03), z),
+        new THREE.Vector3(xStartCorb + 0.1, yOffset - (h - 0.05), z)
+    ], matAs);
 }
 
-// --- 2. AH : BARRES HORIZONTALES (DISTINCTES) ---
-const espAh = 0.12;
+// Ah : Horizontales
 for (let j = 0; j < n2; j++) {
-    const y = (yTop - 0.18) - (j * espAh);
-    if (y > yTop - h + 0.05) {
+    const y = (yOffset - 0.18) - (j * 0.12);
+    if (y > yOffset - h + 0.05) {
         for (let side = 0; side < 2; side++) {
             const z = (side === 0) ? zG + 0.03 : (zG + b) - 0.03;
             addPolyline([new THREE.Vector3(-0.2, y, z), new THREE.Vector3(xStartCorb + Lcorb - 0.05, y, z)], matAh);
@@ -118,35 +110,26 @@ for (let j = 0; j < n2; j++) {
     }
 }
 
-// --- 3. AT : CADRES VERTICAUX (ADAPTATIFS) ---
-const nbCadres = nAt;
-const xSpaceAt = (Lcorb - 0.15) / (nbCadres - 1 || 1);
-
-for (let k = 0; k < nbCadres; k++) {
-    const xLoc = 0.10 + (k * xSpaceAt); // Position le long du corbeau
-    const xGlobal = xStartCorb + xLoc;
-    
-    // Calcul de la hauteur locale du cadre en fonction de la pente
-    const hLocale = hNez + ( (Lcorb - xLoc) / Lcorb ) * (h - hNez);
-    const yBot = yTop - hLocale + 0.03;
-    const yTopCadre = yTop - 0.03;
-
-    const ptsAt = [
-        new THREE.Vector3(xGlobal, yTopCadre, zG + 0.03),
-        new THREE.Vector3(xGlobal, yTopCadre, zG + b - 0.03),
-        new THREE.Vector3(xGlobal, yBot, zG + b - 0.03),
-        new THREE.Vector3(xGlobal, yBot, zG + 0.03),
-        new THREE.Vector3(xGlobal, yTopCadre, zG + 0.03) // Fermeture du cadre
-    ];
-    addPolyline(ptsAt, matAt);
+// At : Cadres Adaptatifs
+for (let k = 0; k < nAt; k++) {
+    const xLoc = 0.10 + (k * (Lcorb - 0.15) / (nAt - 1 || 1));
+    const hLocale = hNez + ((Lcorb - xLoc) / Lcorb) * (h - hNez);
+    const yBot = yOffset - hLocale + 0.03;
+    const yT = yOffset - 0.03;
+    const xG = xStartCorb + xLoc;
+    addPolyline([
+        new THREE.Vector3(xG, yT, zG + 0.03), new THREE.Vector3(xG, yT, zG + b - 0.03),
+        new THREE.Vector3(xG, yBot, zG + b - 0.03), new THREE.Vector3(xG, yBot, zG + 0.03),
+        new THREE.Vector3(xG, yT, zG + 0.03)
+    ], matAt);
 }
 
 function animate() {
     renderer.setAnimationLoop(() => {
         if (!renderer.xr.isPresenting) {
             group.rotation.y += 0.005;
-            camera.position.set(2.2, 1.5, 2.2);
-            camera.lookAt(0, 0, 0);
+            camera.position.set(2.5, 1.5, 2.5);
+            camera.lookAt(0, 0.5, 0);
         }
         renderer.render(scene, camera);
     });
