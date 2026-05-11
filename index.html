@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>JESA BIM 3D - Monitoring Final</title>
+    <title>JESA BIM 3D - Monitoring Final Corrigé</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Inter:wght@400;600&display=swap');
@@ -30,27 +30,35 @@
         </div>
         <div class="data-row"><span>Section (As)</span><span id="v-as" class="val-green">---</span></div>
         <div class="data-row"><span>Tirants (n1)</span><span id="v-n1" class="val">---</span></div>
-        <div class="data-row"><span>Horiz. (n2)</span><span id="v-n2" class="val">---</span></div>
+        <div class="data-row"><span>Horiz. (Ah)</span><span id="v-n2" class="val">---</span></div>
+        <div class="data-row"><span>Cadres (At)</span><span id="v-at" class="val">---</span></div>
     </div>
 
 <script type="module">
 import { ARButton } from 'https://unpkg.com/three@0.128.0/examples/jsm/webxr/ARButton.js';
 
-// --- RECUPERATION DYNAMIQUE DES DONNEES ---
 const p = new URLSearchParams(window.location.search);
 const decode = (s) => s ? decodeURIComponent(s.replace(/\+/g, ' ')).replace(/_/g, ' ') : '---';
 
-// Affichage HUD
+// --- DATA BINDING HUD ---
 document.getElementById('m-id').innerText = decode(p.get('id'));
 document.getElementById('m-date').innerText = decode(p.get('date'));
-document.getElementById('v-as').innerText = p.get('as') + " cm²";
-document.getElementById('v-n1').innerText = decode(p.get('n1'));
-document.getElementById('v-n2').innerText = decode(p.get('n2'));
+document.getElementById('v-as').innerText = (p.get('as') || '0') + " cm²";
 
-// Valeurs 3D
+const n1_text = decode(p.get('n1')) || "8 HA12";
+const n2_text = decode(p.get('n2')) || "6 HA10";
+const at_text = decode(p.get('at')) || "3 HA8";
+
+document.getElementById('v-n1').innerText = n1_text;
+document.getElementById('v-n2').innerText = n2_text;
+document.getElementById('v-at').innerText = at_text;
+
+// --- PARAMETRES GEOMETRIQUES ---
 let h = (parseFloat(p.get('h')) || 600) / 1000;
 let b = (parseFloat(p.get('b')) || 400) / 1000;
-const n1 = parseInt(p.get('n1')) || 8;
+const numN1 = parseInt(n1_text) || 8;
+const numN2 = parseInt(n2_text) || 6;
+const numAt = parseInt(at_text) || 3;
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.01, 1000);
@@ -63,52 +71,87 @@ document.body.appendChild(ARButton.createButton(renderer));
 const group = new THREE.Group();
 scene.add(group);
 
+// Matériaux
 const matBeton = new THREE.MeshStandardMaterial({ color: 0x888888, transparent: true, opacity: 0.3 });
-const matAcier = new THREE.MeshStandardMaterial({ color: 0xff6b00, metalness: 0.8 });
-const matLine = new THREE.LineBasicMaterial({ color: 0xff6b00 });
+const matAs = new THREE.LineBasicMaterial({ color: 0xff6b00, linewidth: 2 });
+const matAh = new THREE.LineBasicMaterial({ color: 0x00ccff });
+const matAt = new THREE.LineBasicMaterial({ color: 0x2ecc71 });
+const matAcierSolide = new THREE.MeshStandardMaterial({ color: 0xff6b00, metalness: 0.8 });
 
 scene.add(new THREE.AmbientLight(0xffffff, 0.8));
 const sun = new THREE.DirectionalLight(0xffffff, 1);
 sun.position.set(5, 10, 5);
 scene.add(sun);
 
-// --- GEOMETRIE ---
+function addPolyline(points, material) {
+    const geom = new THREE.BufferGeometry().setFromPoints(points);
+    group.add(new THREE.Line(geom, material));
+}
+
 const yOffset = 0.5;
 const Lcorb = 0.75;
+const hNez = 0.25;
 const zG = -b / 2;
+const xStartCorb = 0.25;
 
-// Poteau
+// Béton
 group.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 3.0, 0.5), matBeton));
-
-// Corbeau
 const shape = new THREE.Shape();
-shape.moveTo(0, 0); shape.lineTo(Lcorb, 0); shape.lineTo(Lcorb, -0.25); shape.lineTo(0, -h); shape.lineTo(0, 0);
+shape.moveTo(0, 0); shape.lineTo(Lcorb, 0); shape.lineTo(Lcorb, -hNez); shape.lineTo(0, -h); shape.lineTo(0, 0);
 const meshC = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: b, bevelEnabled: false }), matBeton);
-meshC.position.set(0.25, yOffset, zG);
+meshC.position.set(xStartCorb, yOffset, zG);
 group.add(meshC);
 
-// --- AJOUT DES 4 BARRES VERTICALES (EXTREMITES POTEAU) ---
-const pos = [0.18, -0.18];
-pos.forEach(x => {
-    pos.forEach(z => {
-        const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 3.0, 8), matAcier);
-        bar.position.set(x, 0, z);
-        group.add(bar);
+// --- 1. AS : TIRANTS (ET CALCUL DES POSITIONS Z POUR SUPERPOSITION) ---
+const zPositionsExtremes = [];
+for (let i = 0; i < numN1; i++) {
+    const z = zG + 0.05 + (i * (b - 0.1) / (numN1 - 1 || 1));
+    if (i === 0 || i === numN1 - 1) zPositionsExtremes.push(z); // On garde les bords
+
+    const yBas = yOffset - h + 0.05;
+    addPolyline([
+        new THREE.Vector3(-0.15, yBas, z),
+        new THREE.Vector3(-0.15, yOffset - 0.03, z),
+        new THREE.Vector3(xStartCorb + Lcorb - 0.05, yOffset - 0.03, z),
+        new THREE.Vector3(xStartCorb + Lcorb - 0.05, yOffset - (hNez - 0.03), z),
+        new THREE.Vector3(xStartCorb + 0.1, yBas, z)
+    ], matAs);
+}
+
+// --- 2. ARMATURE POTEAU (SUPERPOSÉES AUX AS EXTRÊMES) ---
+const xPositionsPoteau = [-0.15, 0.15]; 
+xPositionsPoteau.forEach(x => {
+    zPositionsExtremes.forEach(z => {
+        const barPoteau = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 3.0, 8), matAcierSolide);
+        barPoteau.position.set(x, 0, z);
+        group.add(barPoteau);
     });
 });
 
-// --- TIRANTS AS (DESCENDENT DANS LE POTEAU) ---
-for (let i = 0; i < n1; i++) {
-    const zPos = zG + 0.05 + (i * (b - 0.1) / (n1 - 1 || 1));
-    const pts = [
-        new THREE.Vector3(-0.15, yOffset - h + 0.05, zPos),
-        new THREE.Vector3(-0.15, yOffset - 0.03, zPos),
-        new THREE.Vector3(0.25 + Lcorb - 0.05, yOffset - 0.03, zPos),
-        new THREE.Vector3(0.25 + Lcorb - 0.05, yOffset - 0.22, zPos),
-        new THREE.Vector3(0.25 + 0.1, yOffset - h + 0.05, zPos)
-    ];
-    const geom = new THREE.BufferGeometry().setFromPoints(pts);
-    group.add(new THREE.Line(geom, matLine));
+// --- 3. AH : HORIZONTALES ---
+for (let j = 0; j < numN2; j++) {
+    const y = (yOffset - 0.18) - (j * 0.12);
+    if (y > yOffset - h + 0.05) {
+        for (let side = 0; side < 2; side++) {
+            const z = (side === 0) ? zG + 0.03 : (zG + b) - 0.03;
+            addPolyline([new THREE.Vector3(-0.15, y, z), new THREE.Vector3(xStartCorb + Lcorb - 0.05, y, z)], matAh);
+        }
+    }
+}
+
+// --- 4. AT : CADRES DE FRETTAGE ---
+for (let k = 0; k < numAt; k++) {
+    const xLoc = 0.10 + (k * (Lcorb - 0.15) / (numAt - 1 || 1));
+    const hLocale = hNez + ((Lcorb - xLoc) / Lcorb) * (h - hNez);
+    const yBot = yOffset - hLocale + 0.03;
+    const xG = xStartCorb + xLoc;
+    addPolyline([
+        new THREE.Vector3(xG, yOffset - 0.03, zG + 0.03), 
+        new THREE.Vector3(xG, yOffset - 0.03, zG + b - 0.03),
+        new THREE.Vector3(xG, yBot, zG + b - 0.03), 
+        new THREE.Vector3(xG, yBot, zG + 0.03),
+        new THREE.Vector3(xG, yOffset - 0.03, zG + 0.03)
+    ], matAt);
 }
 
 function animate() {
