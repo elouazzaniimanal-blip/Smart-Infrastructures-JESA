@@ -56,11 +56,12 @@ function getFirstNumber(text, defaultValue) {
 }
 
 function getTotalFromMultiplication(text, defaultValue) {
-    const matches = String(text || "").match(/\d+/g);
+    const clean = String(text || "").replace(/HA\d+/gi, "");
+    const matches = clean.match(/\d+/g);
     if (!matches || matches.length === 0) return defaultValue;
 
-    if (String(text).includes("×") || String(text).toLowerCase().includes("x")) {
-        return matches.map(n => parseInt(n, 10)).reduce((a, b) => a * b, 1);
+    if (clean.includes("×") || clean.toLowerCase().includes("x")) {
+        return matches.slice(0, 2).map(n => parseInt(n, 10)).reduce((a, b) => a * b, 1);
     }
 
     return parseInt(matches[0], 10);
