@@ -125,26 +125,28 @@ for (let m = 0; m < 15; m++) {
     ], 0xff6b00); 
 }
 
-// --- 3. AH : S'ÉTEND JUSQU'À AS (CORRIGÉ) ---
+// --- 3. AH : S'AJUSTE PILE POIL AUX AS ---
 for (let j = 0; j < nbAh3D; j++) {
     const y = (yOffset - 0.15) - (j * 0.10);
 
-    const x1 = xStartCorb + Lcorb - 0.05;
-    const y1 = yOffset - hNez + 0.03;
-    const x2 = xStartCorb + 0.05;
-    const y2 = yOffset - h + 0.05;
+    // Points de référence de la pente AS (bas du corbeau)
+    const xPenteDepart = xStartCorb + Lcorb - 0.05;
+    const yPenteDepart = yOffset - hNez + 0.03;
+    const xPenteFin = xStartCorb + 0.05;
+    const yPenteFin = yOffset - h + 0.05;
 
-    const t = (y - y1) / (y2 - y1);
-    const xEnd = x1 + t * (x2 - x1) - 0.03;
+    // Interpolation pour trouver l'extrémité exacte sur la ligne oblique
+    const t = (y - yPenteDepart) / (yPenteFin - yPenteDepart);
+    const xContactAs = xPenteDepart + t * (xPenteFin - xPenteDepart);
 
-    if (y > yOffset - h + 0.05) {
+    if (y > yPenteFin) {
         addSolidPolyline([
             new THREE.Vector3(-0.15, y, zG + 0.03), 
-            new THREE.Vector3(xEnd, y, zG + 0.03)
+            new THREE.Vector3(xContactAs, y, zG + 0.03)
         ], 0xd9d9d9);
         addSolidPolyline([
             new THREE.Vector3(-0.15, y, zG + b - 0.03), 
-            new THREE.Vector3(xEnd, y, zG + b - 0.03)
+            new THREE.Vector3(xContactAs, y, zG + b - 0.03)
         ], 0xd9d9d9);
     }
 }
