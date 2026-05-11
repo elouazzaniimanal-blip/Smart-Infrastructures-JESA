@@ -99,7 +99,7 @@ const meshC = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: b, bevelE
 meshC.position.set(xStartCorb, yOffset, zG);
 group.add(meshC);
 
-// --- 1. AS : POINTILLÉS ORANGE ---
+// --- 1. AS : PLEIN DORE ---
 for (let i = 0; i < nbAs3D; i++) {
     const z = zG + 0.05 + (i * (b - 0.1) / Math.max(1, nbAs3D - 1));
     addSolidPolyline([
@@ -134,7 +134,8 @@ for (let m = 0; m < 15; m++) {
     ], 0xff6b00); 
 }
 
-// --- 3. AH : PLEIN BLEU (Console) ---
+// --- 3. AH : PLEIN GRIS (Console) ---
+// Modifié : X s'arrête maintenant à xStartCorb + Lcorb (limite du corbeau)
 for (let j = 0; j < nbAh3D; j++) {
     const y = (yOffset - 0.18) - (j * 0.12);
     if (y > yOffset - h + 0.05) {
@@ -143,7 +144,7 @@ for (let j = 0; j < nbAh3D; j++) {
     }
 }
 
-// --- 4. AT : PLEIN VERT (Console) ---
+// --- 4. AT : PLEIN BLANC (Console) ---
 for (let k = 0; k < nbAt3D; k++) {
     const xLoc = 0.10 + (k * (Lcorb - 0.20) / Math.max(1, nbAt3D - 1));
     const hLoc = hNez + ((Lcorb - xLoc) / Lcorb) * (h - hNez);
