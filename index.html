@@ -255,45 +255,64 @@ if (type === "CORBEAU") {
     group.add(poteauMain);
 
     const hauteurPoteau = 2.0;
-    const corbeauAnchorX = -0.18;
-    const corbeauAnchorFootY = -0.22;
-    const corbeauTopY = h/2 - 0.04;
-    const corbeauReturnY = Math.max(-h/2 + 0.10, corbeauAnchorFootY);
-    const corbeauTipX = 0.78;
-    const corbeauReturnX = 0.02;
+    // Géométrie de la barre en U du corbeau (tracé de référence ferraillage)
+    const anchorX    = -0.18;   // position X dans le poteau (côté colonne)
+    const anchorBotY = -hauteurPoteau / 2; // jambe descend jusqu'au bas du poteau visible
+    const topY       = h / 2 - 0.04;       // fibre haute du corbeau
+    const tipX       = 0.78;               // extrémité du corbeau
+    const returnY    = -h / 2 + 0.08;      // fibre basse du corbeau (sous-face)
+    const returnX    = 0.02;               // retour vers le poteau en sous-face
     const corbeauCadreTopOffset = 0.15;
-    const corbeauCadreHeight = h - 0.35;
-    for(let i=0; i<4; i++) {
-        const bp = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, hauteurPoteau, 8), matOrange);
-        bp.position.set((i < 2 ? -0.15 : 0.15), 0, (i % 2 === 0 ? -0.15 : 0.15));
-        addEdges(bp);
-        group.add(bp);
-    }
+    const corbeauCadreHeight    = h - 0.35;
 
-    // --- AJOUT DES CADRES DE CONFINEMENT DANS LE POTEAU (RESSERREMENT EC2) ---
+    // --- Barres de poteau tracées en LIGNES (pas de cylindres) ---
+    const poteauBarXZ = [[-0.15, -0.15], [0.15, -0.15], [-0.15, 0.15], [0.15, 0.15]];
+    poteauBarXZ.forEach(([bx, bz]) => {
+        const pts = [
+            new THREE.Vector3(bx, -hauteurPoteau / 2, bz),
+            new THREE.Vector3(bx,  hauteurPoteau / 2, bz)
+        ];
+        group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), matLineOrange));
+    });
+
+    // --- CADRES DE CONFINEMENT DANS LE POTEAU (RESSERREMENT EC2) ---
     for(let k = 0; k < n2; k++) {
-        const yCadre = (h/2) - (k * 0.12); // Resserrement visuel
-        const dimP = 0.42; 
-        const ptsP = [new THREE.Vector3(-dimP/2, yCadre, -dimP/2), new THREE.Vector3(dimP/2, yCadre, -dimP/2), new THREE.Vector3(dimP/2, yCadre, dimP/2), new THREE.Vector3(-dimP/2, yCadre, dimP/2), new THREE.Vector3(-dimP/2, yCadre, -dimP/2)];
+        const yCadre = (h / 2) - (k * 0.12);
+        const dimP = 0.42;
+        const ptsP = [
+            new THREE.Vector3(-dimP/2, yCadre, -dimP/2),
+            new THREE.Vector3( dimP/2, yCadre, -dimP/2),
+            new THREE.Vector3( dimP/2, yCadre,  dimP/2),
+            new THREE.Vector3(-dimP/2, yCadre,  dimP/2),
+            new THREE.Vector3(-dimP/2, yCadre, -dimP/2)
+        ];
         group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ptsP), matLineOrange));
     }
 
-    // Armatures principales du corbeau : tracé plié, ancré dans le poteau,
-    // passant au-dessus du corbeau puis redescendant en sous-face comme sur le détail de ferraillage.
-    for(let i=0; i<n1; i++){
-        const zBar = -b/2 + 0.05 + (i*(b-0.1)/Math.max(n1-1,1));
+    // --- ARMATURES AS : barres en U courbées (lignes — pas de cylindres) ---
+    // Chaque barre décrit : jambe d'ancrage dans le poteau → nappe haute → extrémité → sous-face → retour poteau
+    for(let i = 0; i < n1; i++){
+        const zBar = -b / 2 + 0.05 + (i * (b - 0.10) / Math.max(n1 - 1, 1));
         const pts = [
-            new THREE.Vector3(corbeauAnchorX, corbeauAnchorFootY, zBar), // jambe d'ancrage dans le poteau
-            new THREE.Vector3(corbeauAnchorX, corbeauTopY, zBar),
-            new THREE.Vector3(corbeauTipX, corbeauTopY, zBar),            // passage au-dessus du corbeau
-            new THREE.Vector3(corbeauTipX, corbeauReturnY, zBar),
-            new THREE.Vector3(corbeauReturnX, corbeauReturnY, zBar)       // retour en sous-face du corbeau
+            new THREE.Vector3(anchorX, anchorBotY, zBar),   // bas de la jambe d'ancrage
+            new THREE.Vector3(anchorX, topY,        zBar),   // haut de la jambe
+            new THREE.Vector3(tipX,    topY,        zBar),   // nappe haute jusqu'à l'extrémité
+            new THREE.Vector3(tipX,    returnY,     zBar),   // descente en extrémité
+            new THREE.Vector3(returnX, returnY,     zBar)    // retour en sous-face vers le poteau
         ];
         group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), matLineOrange));
     }
-    for(let j=0; j<n2; j++){
-        const yPos = (h/2) - corbeauCadreTopOffset - (j * corbeauCadreHeight / (n2-1||1));
-        const pts = [new THREE.Vector3(0.28, yPos, -b/2+0.04), new THREE.Vector3(0.55, yPos, -b/2+0.04), new THREE.Vector3(0.55, yPos, b/2-0.04), new THREE.Vector3(0.28, yPos, b/2-0.04), new THREE.Vector3(0.28, yPos, -b/2+0.04)];
+
+    // Cadres horizontaux du corbeau
+    for(let j = 0; j < n2; j++){
+        const yPos = (h / 2) - corbeauCadreTopOffset - (j * corbeauCadreHeight / (n2 - 1 || 1));
+        const pts = [
+            new THREE.Vector3(0.28, yPos, -b/2 + 0.04),
+            new THREE.Vector3(0.55, yPos, -b/2 + 0.04),
+            new THREE.Vector3(0.55, yPos,  b/2 - 0.04),
+            new THREE.Vector3(0.28, yPos,  b/2 - 0.04),
+            new THREE.Vector3(0.28, yPos, -b/2 + 0.04)
+        ];
         group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), matLineOrange));
     }
 
