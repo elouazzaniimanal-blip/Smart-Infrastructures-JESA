@@ -46,6 +46,30 @@ document.getElementById('v-as').innerText = (p.get('as') || "5.21") + " cm²";
 document.getElementById('v-ah').innerText = decode(p.get('n1')) || "6 HA10";
 document.getElementById('v-at').innerText = decode(p.get('at')) || "2 × 2 HA8";
 
+const asText = decode(p.get('as_detail')) || "8 HA12";
+const ahText = decode(p.get('n1')) || "6 HA10";
+const atText = decode(p.get('at')) || "2 × 2 HA8";
+
+function getFirstNumber(text, defaultValue) {
+    const match = String(text || "").match(/\d+/);
+    return match ? parseInt(match[0], 10) : defaultValue;
+}
+
+function getTotalFromMultiplication(text, defaultValue) {
+    const matches = String(text || "").match(/\d+/g);
+    if (!matches || matches.length === 0) return defaultValue;
+
+    if (String(text).includes("×") || String(text).toLowerCase().includes("x")) {
+        return matches.map(n => parseInt(n, 10)).reduce((a, b) => a * b, 1);
+    }
+
+    return parseInt(matches[0], 10);
+}
+
+const nbAs3D = Math.max(1, getFirstNumber(asText, 8));
+const nbAh3D = Math.max(1, getFirstNumber(ahText, 6));
+const nbAt3D = Math.max(1, getTotalFromMultiplication(atText, 3));
+
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.01, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -86,8 +110,8 @@ meshC.position.set(xStartCorb, yOffset, zG);
 group.add(meshC);
 
 // --- 1. AS : POINTILLÉS ORANGE ---
-for (let i = 0; i < 8; i++) {
-    const z = zG + 0.05 + (i * (b - 0.1) / 7);
+for (let i = 0; i < nbAs3D; i++) {
+    const z = zG + 0.05 + (i * (b - 0.1) / Math.max(1, nbAs3D - 1));
     addDashedPolyline([
         new THREE.Vector3(-0.15, yOffset - h + 0.05, z),
         new THREE.Vector3(-0.15, yOffset - 0.03, z),
@@ -109,7 +133,7 @@ xPos.forEach(x => {
 });
 
 // --- 3. AH : PLEIN BLEU (Lignes continues) ---
-for (let j = 0; j < 6; j++) {
+for (let j = 0; j < nbAh3D; j++) {
     const y = (yOffset - 0.18) - (j * 0.12);
     if (y > yOffset - h + 0.05) {
         addSolidPolyline([new THREE.Vector3(-0.15, y, zG + 0.03), new THREE.Vector3(xStartCorb + Lcorb - 0.05, y, zG + 0.03)], 0x00ccff);
@@ -118,8 +142,8 @@ for (let j = 0; j < 6; j++) {
 }
 
 // --- 4. AT : PLEIN VERT ---
-for (let k = 0; k < 3; k++) {
-    const xLoc = 0.10 + (k * 0.3);
+for (let k = 0; k < nbAt3D; k++) {
+    const xLoc = 0.10 + (k * (Lcorb - 0.20) / Math.max(1, nbAt3D - 1));
     const hLoc = hNez + ((Lcorb - xLoc) / Lcorb) * (h - hNez);
     const xG = xStartCorb + xLoc;
     addSolidPolyline([
