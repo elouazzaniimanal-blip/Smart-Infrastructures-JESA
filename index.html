@@ -44,7 +44,6 @@
             bottom: 20px !important;
         }
 
-        /* Styles ajoutés pour le dashboard graphique */
         #matu-container { margin-top: 15px; display: none; }
         #matuChart { background: #000; border: 1px solid #333; border-radius: 4px; }
     </style>
@@ -82,7 +81,6 @@
 <script type="module">
 import { ARButton } from 'https://unpkg.com/three@0.128.0/examples/jsm/webxr/ARButton.js';
 
-// --- CONFIGURATION ---
 const p = new URLSearchParams(window.location.search);
 const type = (p.get('type') || 'CORBEAU').toUpperCase();
 
@@ -111,34 +109,24 @@ if (type === "CORBEAU") {
     btnNdc.onclick = () => alert('Note de Structure : WinSemelle\nEurocode 2 : CONFORME ✅');
 }
 
-// --- FONCTION DE CALCUL DE MATURIMÉTRIE (Loi d'Arrhenius) ---
 window.calculerMaturite = function(donneesCapteurUsine) {
-    // 1. LE PASSÉ : On récupère l'historique thermique (ex: 32°C de moyenne)
     let tempMoyenne = 32; 
-    let ageReel = 18; // 18 heures depuis le coulage
-    
-    // Calcul de l'Âge Équivalent (Simplifié pour la démo)
-    // Le béton mûrit plus vite car l'usine a chauffé (32°C au lieu de 20°C)
+    let ageReel = 18;
     let ageEquivalent = ageReel * Math.pow(2, (tempMoyenne - 20) / 10); 
-    
-    // Résistance estimée en MPa
     let fck = 35 * (ageEquivalent / (ageEquivalent + 5));
     return fck.toFixed(1);
 }
 
-// --- LE DASHBOARD GRAPHIQUE ---
 window.drawPredictiveChart = function() {
     const canvas = document.getElementById('matuChart');
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0,0,280,120);
 
-    // --- LE PASSÉ (Données réelles enregistrées) ---
-    ctx.strokeStyle = "#00d4ff"; // Bleu : La vie du béton
+    ctx.strokeStyle = "#00d4ff";
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(30, 100);
     
-    // On trace jusqu'à l'heure actuelle (ex: 18h)
     for(let x = 0; x < 180; x++) {
         let t = x / 10;
         let y = 100 - (35 * (t / (t + 2.5)) * 2.5);
@@ -146,25 +134,21 @@ window.drawPredictiveChart = function() {
     }
     ctx.stroke();
 
-    // --- LA PLANIFICATION PRÉDICTIVE (Le futur pointillé) ---
     ctx.setLineDash([2, 4]);
-    ctx.strokeStyle = "#aaa"; // Gris : Ce qui va arriver
+    ctx.strokeStyle = "#aaa";
     ctx.beginPath();
-    ctx.moveTo(210, 45); // On part de maintenant
+    ctx.moveTo(210, 45);
     for(let x = 180; x < 240; x++) {
         let t = x / 10;
         let y = 100 - (35 * (t / (t + 2.5)) * 2.5);
         ctx.lineTo(x + 30, y);
     }
     ctx.stroke();
-    ctx.setLineDash([]); // Reset
+    ctx.setLineDash([]);
 
-    // --- LES SEUILS DE DÉCISION ---
-    // Seuil 15 MPa (Rouge - Manutention Usine)
     ctx.strokeStyle = "rgba(255, 68, 68, 0.5)";
     ctx.beginPath(); ctx.moveTo(30, 62); ctx.lineTo(270, 62); ctx.stroke();
 
-    // Seuil 25 MPa (Vert - Montage JESA)
     ctx.strokeStyle = "rgba(46, 204, 113, 0.5)";
     ctx.beginPath(); ctx.moveTo(30, 37); ctx.lineTo(270, 37); ctx.stroke();
 };
@@ -177,7 +161,6 @@ window.showMaturityDashboard = function() {
     alert('Résistance actuelle : ' + res + ' MPa\nMaturité : 88%\nDécoffrage : AUTORISÉ ✅');
 }
 
-// --- SCENE & RENDERER ---
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.01, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -197,7 +180,6 @@ function addEdges(mesh) {
     mesh.add(line);
 }
 
-// --- MATERIAUX AMELIORES ---
 const matBeton = new THREE.MeshStandardMaterial({ 
     color: 0x888888, 
     transparent: true, 
@@ -236,17 +218,64 @@ const sun = new THREE.DirectionalLight(0xffffff, 1.2);
 sun.position.set(5, 10, 7.5);
 scene.add(sun);
 
-// --- CONSTRUCTION DU MODELE ---
 if (type === "CORBEAU") {
     document.getElementById('txt-type').innerText = "CORBEAU TRAPÉZOÏDAL";
-    document.getElementById('lbl-n1').innerText = "Tirants Sup.";
-    document.getElementById('lbl-n2').innerText = "Cadres Horiz.";
-    
+    document.getElementById('lbl-n1').innerText = "As - Tirants sup.";
+    document.getElementById('lbl-n2').innerText = "Ah - Cadres horiz.";
+    document.getElementById('v-cf').innerText = nbCF + " At transversaux";
+
+    const Lcorb = 0.75;
+    const hCorb = h;
+    const bCorb = b;
+    const xDebut = 0.08;
+    const xFin = Lcorb;
+    const yTop = hCorb / 2;
+    const yNez = yTop - 0.25;
+    const yBasPoteau = yTop - hCorb;
+    const zG = -bCorb / 2;
+    const zD = bCorb / 2;
+
+    function addBarBetween(p1, p2, radius = 0.012, material = matOrange) {
+        const dir = new THREE.Vector3().subVectors(p2, p1);
+        const len = dir.length();
+        const geom = new THREE.CylinderGeometry(radius, radius, len, 12);
+        const mesh = new THREE.Mesh(geom, material);
+        const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+
+        mesh.position.copy(mid);
+        mesh.quaternion.setFromUnitVectors(
+            new THREE.Vector3(0, 1, 0),
+            dir.clone().normalize()
+        );
+
+        addEdges(mesh);
+        group.add(mesh);
+        return mesh;
+    }
+
+    function addPolyline(points, material = matLineOrange) {
+        const geom = new THREE.BufferGeometry().setFromPoints(points);
+        const line = new THREE.Line(geom, material);
+        group.add(line);
+        return line;
+    }
+
+    function addClosedFrame(points, material = matLineOrange) {
+        const closed = points.slice();
+        closed.push(points[0].clone());
+        return addPolyline(closed, material);
+    }
+
     const shape = new THREE.Shape();
-    shape.moveTo(0,0); shape.lineTo(0.6,0); shape.lineTo(0.6,-0.25); shape.lineTo(0,-h); shape.lineTo(0,0);
-    const geom = new THREE.ExtrudeGeometry(shape, { depth: b, bevelEnabled: false });
+    shape.moveTo(0, 0);
+    shape.lineTo(Lcorb, 0);
+    shape.lineTo(Lcorb, -0.25);
+    shape.lineTo(0, -hCorb);
+    shape.lineTo(0, 0);
+
+    const geom = new THREE.ExtrudeGeometry(shape, { depth: bCorb, bevelEnabled: false });
     const mesh = new THREE.Mesh(geom, matBeton);
-    mesh.position.set(0.25, h/2, -b/2);
+    mesh.position.set(0.25, yTop, -bCorb / 2);
     addEdges(mesh);
     group.add(mesh);
 
@@ -254,33 +283,105 @@ if (type === "CORBEAU") {
     addEdges(poteauMain);
     group.add(poteauMain);
 
-    const hauteurPoteau = 2.0; 
-    for(let i=0; i<4; i++) {
+    const hauteurPoteau = 2.0;
+    for (let i = 0; i < 4; i++) {
         const bp = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, hauteurPoteau, 8), matOrange);
         bp.position.set((i < 2 ? -0.15 : 0.15), 0, (i % 2 === 0 ? -0.15 : 0.15));
         addEdges(bp);
         group.add(bp);
     }
 
-    // --- AJOUT DES CADRES DE CONFINEMENT DANS LE POTEAU (RESSERREMENT EC2) ---
-    for(let k = 0; k < n2; k++) {
-        const yCadre = (h/2) - (k * 0.12); // Resserrement visuel
-        const dimP = 0.42; 
-        const ptsP = [new THREE.Vector3(-dimP/2, yCadre, -dimP/2), new THREE.Vector3(dimP/2, yCadre, -dimP/2), new THREE.Vector3(dimP/2, yCadre, dimP/2), new THREE.Vector3(-dimP/2, yCadre, dimP/2), new THREE.Vector3(-dimP/2, yCadre, -dimP/2)];
-        group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ptsP), matLineOrange));
+    for (let k = 0; k < n2; k++) {
+        const yCadre = yTop - 0.02 - (k * 0.10);
+        const dimP = 0.42;
+
+        addClosedFrame([
+            new THREE.Vector3(-dimP / 2, yCadre, -dimP / 2),
+            new THREE.Vector3(dimP / 2, yCadre, -dimP / 2),
+            new THREE.Vector3(dimP / 2, yCadre, dimP / 2),
+            new THREE.Vector3(-dimP / 2, yCadre, dimP / 2)
+        ]);
     }
 
-    for(let i=0; i<n1; i++){
-        const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.75, 8), matOrange);
-        bar.rotation.z = Math.PI/2;
-        bar.position.set(0.45, h/2 - 0.05, -b/2 + 0.05 + (i*(b-0.1)/(n1-1||1)));
-        addEdges(bar);
-        group.add(bar);
+    const nbAs = Math.max(2, n1);
+    const zMarginAs = 0.05;
+    const yAs = yTop - 0.055;
+    const xAncragePoteau = -0.22;
+    const xAncrageNez = xFin + 0.12;
+
+    for (let i = 0; i < nbAs; i++) {
+        const z = zG + zMarginAs + (i * (bCorb - 2 * zMarginAs) / (nbAs - 1 || 1));
+
+        addBarBetween(
+            new THREE.Vector3(xAncragePoteau, yAs, z),
+            new THREE.Vector3(xAncrageNez, yAs, z),
+            0.012
+        );
     }
-    for(let j=0; j<n2; j++){
-        const yPos = (h/2) - 0.15 - (j * (h-0.35) / (n2-1||1));
-        const pts = [new THREE.Vector3(0.28, yPos, -b/2+0.04), new THREE.Vector3(0.55, yPos, -b/2+0.04), new THREE.Vector3(0.55, yPos, b/2-0.04), new THREE.Vector3(0.28, yPos, b/2-0.04), new THREE.Vector3(0.28, yPos, -b/2+0.04)];
-        group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), matLineOrange));
+
+    const nbAh = Math.max(2, n2);
+    const xAh1 = xDebut;
+    const xAh2 = xFin - 0.06;
+    const zAh1 = zG + 0.045;
+    const zAh2 = zD - 0.045;
+    const yAhTop = yTop - 0.13;
+    const yAhBot = yBasPoteau + 0.12;
+
+    for (let j = 0; j < nbAh; j++) {
+        const y = yAhTop - (j * (yAhTop - yAhBot) / (nbAh - 1 || 1));
+
+        addClosedFrame([
+            new THREE.Vector3(xAh1, y, zAh1),
+            new THREE.Vector3(xAh2, y, zAh1),
+            new THREE.Vector3(xAh2, y, zAh2),
+            new THREE.Vector3(xAh1, y, zAh2)
+        ]);
+    }
+
+    const nbAt = Math.max(2, nbCF);
+    const zAt1 = zG + 0.035;
+    const zAt2 = zD - 0.035;
+
+    for (let k = 0; k < nbAt; k++) {
+        const x = xDebut + (k * (xFin - xDebut) / (nbAt - 1 || 1));
+        const t = (x - xDebut) / (xFin - xDebut);
+        const yBasLocal = yBasPoteau + 0.08 + t * 0.22;
+        const yHautLocal = yTop - 0.08;
+
+        addBarBetween(
+            new THREE.Vector3(x, yBasLocal, zAt1),
+            new THREE.Vector3(x, yHautLocal, zAt1),
+            0.01
+        );
+
+        addBarBetween(
+            new THREE.Vector3(x, yBasLocal, zAt2),
+            new THREE.Vector3(x, yHautLocal, zAt2),
+            0.01
+        );
+
+        addBarBetween(
+            new THREE.Vector3(x, yHautLocal, zAt1),
+            new THREE.Vector3(x, yHautLocal, zAt2),
+            0.01
+        );
+
+        addBarBetween(
+            new THREE.Vector3(x, yBasLocal, zAt1),
+            new THREE.Vector3(x, yBasLocal, zAt2),
+            0.01
+        );
+    }
+
+    const nbInclinees = Math.max(3, nbAt);
+    for (let k = 0; k < nbInclinees; k++) {
+        const z = zG + 0.05 + (k * (bCorb - 0.1) / (nbInclinees - 1 || 1));
+
+        addBarBetween(
+            new THREE.Vector3(xDebut, yBasPoteau + 0.08, z),
+            new THREE.Vector3(xFin - 0.03, yNez - 0.05, z),
+            0.009
+        );
     }
 } else {
     document.getElementById('txt-type').innerText = "SEMELLE À ENCUVEMENT";
@@ -352,7 +453,6 @@ if (type === "CORBEAU") {
     }
 }
 
-// --- CONFIGURATION AR (HIT TEST & ANCRAGE) ---
 const reticle = new THREE.Mesh(
     new THREE.RingGeometry(0.1, 0.12, 32).rotateX(-Math.PI / 2),
     new THREE.MeshBasicMaterial({ color: 0xff6b00 })
