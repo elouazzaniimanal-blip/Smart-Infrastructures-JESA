@@ -265,13 +265,18 @@ if (type === "CORBEAU") {
         group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ptsP), matLineOrange));
     }
 
-    // Tirants supérieurs : traits (lignes) qui partent de l'extrémité du corbeau et s'ancrent dans le poteau jusqu'à son extrémité opposée
+    // Armatures principales du corbeau : tracé plié, ancré dans le poteau,
+    // passant au-dessus du corbeau puis redescendant en sous-face comme sur le détail de ferraillage.
     for(let i=0; i<n1; i++){
         const zBar = -b/2 + 0.05 + (i*(b-0.1)/Math.max(n1-1,1));
-        const yBar = h/2 - 0.05;
+        const yTop = h/2 - 0.04;
+        const yBottom = Math.max(-h/2 + 0.10, -0.22);
         const pts = [
-            new THREE.Vector3(0.80, yBar, zBar),   // extrémité du corbeau
-            new THREE.Vector3(-0.22, yBar, zBar)   // extrémité opposée du poteau
+            new THREE.Vector3(-0.18, -0.22, zBar), // jambe d'ancrage dans le poteau
+            new THREE.Vector3(-0.18, yTop, zBar),
+            new THREE.Vector3(0.78, yTop, zBar),   // passage au-dessus du corbeau
+            new THREE.Vector3(0.78, yBottom, zBar),
+            new THREE.Vector3(0.02, yBottom, zBar) // retour en sous-face du corbeau
         ];
         group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), matLineOrange));
     }
