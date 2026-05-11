@@ -137,7 +137,7 @@ for (let j = 0; j < nbAh3D; j++) {
     const ratio = (y - asTopY) / (asBotY - asTopY);
     const xEnd = asTopX + ratio * (asBotX - asTopX);
 
-    if (y >= asTopY && y <= asBotY) {
+    if (y <= asTopY && y >= asBotY) {
         addSolidPolyline([
             new THREE.Vector3(-0.15, y, zG + 0.03),
             new THREE.Vector3(xEnd, y, zG + 0.03)
