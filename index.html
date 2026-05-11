@@ -18,7 +18,7 @@
         .info-massif strong { color: #fff; }
         .data-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px; }
         .val { color: #d9d9d9; font-weight: bold; }
-        .val-green { color: #d8c3a5; font-weight: bold; }
+        .val-green { color: #b08d57; font-weight: bold; }
         .val-white { color: #ffffff; font-weight: bold; }
     </style>
 </head>
@@ -102,13 +102,13 @@ group.add(meshC);
 // --- 1. AS : POINTILLÉS ORANGE ---
 for (let i = 0; i < nbAs3D; i++) {
     const z = zG + 0.05 + (i * (b - 0.1) / Math.max(1, nbAs3D - 1));
-    addDashedPolyline([
+    addSolidPolyline([
         new THREE.Vector3(-0.15, yOffset - h + 0.05, z),
         new THREE.Vector3(-0.15, yOffset - 0.03, z),
         new THREE.Vector3(xStartCorb + Lcorb - 0.05, yOffset - 0.03, z),
         new THREE.Vector3(xStartCorb + Lcorb - 0.05, yOffset - hNez + 0.03, z),
         new THREE.Vector3(xStartCorb + 0.05, yOffset - h + 0.05, z)
-    ], 0xd8c3a5);
+    ], 0xb08d57);
 }
 
 // --- 2. BARRES VERTICALES DU POTEAU ---
