@@ -55,18 +55,6 @@ function getFirstNumber(text, defaultValue) {
     return match ? parseInt(match[0], 10) : defaultValue;
 }
 
-function getTotalFromMultiplication(text, defaultValue) {
-    const clean = String(text || "").replace(/HA\d+/gi, "");
-    const matches = clean.match(/\d+/g);
-    if (!matches || matches.length === 0) return defaultValue;
-
-    if (clean.includes("×") || clean.toLowerCase().includes("x")) {
-        return matches.slice(0, 2).map(n => parseInt(n, 10)).reduce((a, b) => a * b, 1);
-    }
-
-    return parseInt(matches[0], 10);
-}
-
 const nbAs3D = Math.max(1, getFirstNumber(asText, 8));
 const nbAh3D = Math.max(1, getFirstNumber(ahText, 6));
 const nbAt3D = Math.max(1, getFirstNumber(atText, 3));
@@ -122,7 +110,7 @@ for (let i = 0; i < nbAs3D; i++) {
     ], 0xff6b00);
 }
 
-// --- 2. BARRES DU POTEAU (REMISES) ---
+// --- 2. BARRES VERTICALES DU POTEAU ---
 const xPos = [-0.15, 0.15];
 const zPos = [zG + 0.05, zG + b - 0.05];
 xPos.forEach(x => {
@@ -133,7 +121,19 @@ xPos.forEach(x => {
     });
 });
 
-// --- 3. AH : PLEIN BLEU (Lignes continues) ---
+// --- AJOUT : CADRES HORIZONTAUX DU POTEAU (ÉTRIERS) ---
+for (let m = 0; m < 15; m++) {
+    const yCadre = -1.4 + (m * 0.2);
+    addSolidPolyline([
+        new THREE.Vector3(-0.18, yCadre, zG + 0.02),
+        new THREE.Vector3(0.18, yCadre, zG + 0.02),
+        new THREE.Vector3(0.18, yCadre, zG + b - 0.02),
+        new THREE.Vector3(-0.18, yCadre, zG + b - 0.02),
+        new THREE.Vector3(-0.18, yCadre, zG + 0.02)
+    ], 0xff6b00); 
+}
+
+// --- 3. AH : PLEIN BLEU (Console) ---
 for (let j = 0; j < nbAh3D; j++) {
     const y = (yOffset - 0.18) - (j * 0.12);
     if (y > yOffset - h + 0.05) {
@@ -142,7 +142,7 @@ for (let j = 0; j < nbAh3D; j++) {
     }
 }
 
-// --- 4. AT : PLEIN VERT ---
+// --- 4. AT : PLEIN VERT (Console) ---
 for (let k = 0; k < nbAt3D; k++) {
     const xLoc = 0.10 + (k * (Lcorb - 0.20) / Math.max(1, nbAt3D - 1));
     const hLoc = hNez + ((Lcorb - xLoc) / Lcorb) * (h - hNez);
