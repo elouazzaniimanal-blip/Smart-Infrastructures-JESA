@@ -265,12 +265,15 @@ if (type === "CORBEAU") {
         group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ptsP), matLineOrange));
     }
 
+    // Tirants supérieurs : traits (lignes) qui partent de l'extrémité du corbeau et s'ancrent dans le poteau jusqu'à son extrémité opposée
     for(let i=0; i<n1; i++){
-        const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.75, 8), matOrange);
-        bar.rotation.z = Math.PI/2;
-        bar.position.set(0.45, h/2 - 0.05, -b/2 + 0.05 + (i*(b-0.1)/(n1-1||1)));
-        addEdges(bar);
-        group.add(bar);
+        const zBar = -b/2 + 0.05 + (i*(b-0.1)/Math.max(n1-1,1));
+        const yBar = h/2 - 0.05;
+        const pts = [
+            new THREE.Vector3(0.80, yBar, zBar),   // extrémité du corbeau
+            new THREE.Vector3(-0.22, yBar, zBar)   // extrémité opposée du poteau
+        ];
+        group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), matLineOrange));
     }
     for(let j=0; j<n2; j++){
         const yPos = (h/2) - 0.15 - (j * (h-0.35) / (n2-1||1));
