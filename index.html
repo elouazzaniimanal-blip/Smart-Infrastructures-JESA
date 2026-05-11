@@ -289,16 +289,27 @@ if (type === "CORBEAU") {
         group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ptsP), matLineOrange));
     }
 
-    // --- ARMATURES AS : barres en U courbées (lignes — pas de cylindres) ---
-    // Chaque barre décrit : jambe d'ancrage dans le poteau → nappe haute → extrémité → sous-face → retour poteau
+    // --- ARMATURES AS : grandes boucles horizontales en U empilées verticalement ---
+    // Chaque barre :  queue ↓ | brin avant →→ | virage 180° au nez | brin arrière ←← | queue ↓
+    // Les boucles sont dans le plan XZ (horizontal), empilées à différentes hauteurs Y.
+    const zFront    = -b / 2 + 0.04;   // brin avant (face avant du corbeau)
+    const zBack     =  b / 2 - 0.04;   // brin arrière (face arrière du corbeau)
+    const xAnchor   =  anchorX;        // extrémité côté poteau (côté gauche, loin du corbeau)
+    const xNez      =  tipX + 0.05;    // nez du corbeau (extrémité, virage 180°)
+    const hookLen   =  0.28;           // longueur du crochet/queue vers le bas
+    const yStart    =  topY;           // lit supérieur (fibre haute)
+    const yStep     =  Math.max(0.055, (h * 0.85) / Math.max(n1 - 1, 1));
+
     for(let i = 0; i < n1; i++){
-        const zBar = -b / 2 + 0.05 + (i * (b - 0.10) / Math.max(n1 - 1, 1));
+        const y = yStart - i * yStep;
+        if (y < -h / 2 + 0.06) break;  // ne pas dépasser la sous-face du corbeau
         const pts = [
-            new THREE.Vector3(anchorX, anchorBotY, zBar),   // bas de la jambe d'ancrage
-            new THREE.Vector3(anchorX, topY,        zBar),   // haut de la jambe
-            new THREE.Vector3(tipX,    topY,        zBar),   // nappe haute jusqu'à l'extrémité
-            new THREE.Vector3(tipX,    returnY,     zBar),   // descente en extrémité
-            new THREE.Vector3(returnX, returnY,     zBar)    // retour en sous-face vers le poteau
+            new THREE.Vector3(xAnchor, y - hookLen, zFront),  // queue vers le bas (avant)
+            new THREE.Vector3(xAnchor, y,            zFront),  // remontée vers le niveau du lit
+            new THREE.Vector3(xNez,    y,            zFront),  // brin avant horizontal jusqu'au nez
+            new THREE.Vector3(xNez,    y,            zBack),   // virage 180° au nez (mandrin)
+            new THREE.Vector3(xAnchor, y,            zBack),   // brin arrière horizontal retour
+            new THREE.Vector3(xAnchor, y - hookLen,  zBack),   // queue vers le bas (arrière)
         ];
         group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), matLineOrange));
     }
