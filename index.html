@@ -69,7 +69,7 @@ function getTotalFromMultiplication(text, defaultValue) {
 
 const nbAs3D = Math.max(1, getFirstNumber(asText, 8));
 const nbAh3D = Math.max(1, getFirstNumber(ahText, 6));
-const nbAt3D = Math.max(1, getTotalFromMultiplication(atText, 3));
+const nbAt3D = Math.max(1, getFirstNumber(atText, 3));
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.01, 1000);
