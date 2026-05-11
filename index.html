@@ -125,21 +125,22 @@ for (let m = 0; m < 15; m++) {
     ], 0xff6b00); 
 }
 
-// --- 3. AH : SUIVANT LA PENTE DE AS ---
+// --- 3. AH : S'ÉTEND JUSQU'À AS (CORRIGÉ) ---
 for (let j = 0; j < nbAh3D; j++) {
-    const y = (yOffset - 0.18) - (j * 0.08);
-    // Calcul de la longueur limitée par la pente de la sous-face du corbeau (As inférieur)
-    const xEnd = Lcorb - ((yOffset - y) / (h - 0.05)) * Lcorb;
-    const xLimit = Math.max(0.1, xEnd);
+    const y = (yOffset - 0.15) - (j * 0.10);
+    // Calcul précis de l'intersection avec la pente de AS
+    const rationY = (yOffset - y) / h; 
+    const xLimit = Lcorb * (1 - rationY);
+    const xEnd = Math.max(0.05, xLimit);
 
-    if (y > yOffset - h + 0.1) {
+    if (y > yOffset - h + 0.05) {
         addSolidPolyline([
             new THREE.Vector3(-0.15, y, zG + 0.03), 
-            new THREE.Vector3(xStartCorb + xLimit - 0.05, y, zG + 0.03)
+            new THREE.Vector3(xStartCorb + xEnd, y, zG + 0.03)
         ], 0xd9d9d9);
         addSolidPolyline([
             new THREE.Vector3(-0.15, y, zG + b - 0.03), 
-            new THREE.Vector3(xStartCorb + xLimit - 0.05, y, zG + b - 0.03)
+            new THREE.Vector3(xStartCorb + xEnd, y, zG + b - 0.03)
         ], 0xd9d9d9);
     }
 }
