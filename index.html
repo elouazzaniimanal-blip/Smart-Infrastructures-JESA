@@ -250,6 +250,14 @@ if (type === "CORBEAU") {
     group.add(poteauMain);
 
     const hauteurPoteau = 2.0; 
+    const corbeauAnchorX = -0.18;
+    const corbeauAnchorFootY = -0.22;
+    const corbeauTopY = h/2 - 0.04;
+    const corbeauReturnY = Math.max(-h/2 + 0.10, corbeauAnchorFootY);
+    const corbeauTipX = 0.78;
+    const corbeauReturnX = 0.02;
+    const corbeauCadreTopOffset = 0.15;
+    const corbeauCadreHeight = h - 0.35;
     for(let i=0; i<4; i++) {
         const bp = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, hauteurPoteau, 8), matOrange);
         bp.position.set((i < 2 ? -0.15 : 0.15), 0, (i % 2 === 0 ? -0.15 : 0.15));
@@ -269,19 +277,17 @@ if (type === "CORBEAU") {
     // passant au-dessus du corbeau puis redescendant en sous-face comme sur le détail de ferraillage.
     for(let i=0; i<n1; i++){
         const zBar = -b/2 + 0.05 + (i*(b-0.1)/Math.max(n1-1,1));
-        const yTop = h/2 - 0.04;
-        const yBottom = Math.max(-h/2 + 0.10, -0.22);
         const pts = [
-            new THREE.Vector3(-0.18, -0.22, zBar), // jambe d'ancrage dans le poteau
-            new THREE.Vector3(-0.18, yTop, zBar),
-            new THREE.Vector3(0.78, yTop, zBar),   // passage au-dessus du corbeau
-            new THREE.Vector3(0.78, yBottom, zBar),
-            new THREE.Vector3(0.02, yBottom, zBar) // retour en sous-face du corbeau
+            new THREE.Vector3(corbeauAnchorX, corbeauAnchorFootY, zBar), // jambe d'ancrage dans le poteau
+            new THREE.Vector3(corbeauAnchorX, corbeauTopY, zBar),
+            new THREE.Vector3(corbeauTipX, corbeauTopY, zBar),            // passage au-dessus du corbeau
+            new THREE.Vector3(corbeauTipX, corbeauReturnY, zBar),
+            new THREE.Vector3(corbeauReturnX, corbeauReturnY, zBar)       // retour en sous-face du corbeau
         ];
         group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), matLineOrange));
     }
     for(let j=0; j<n2; j++){
-        const yPos = (h/2) - 0.15 - (j * (h-0.35) / (n2-1||1));
+        const yPos = (h/2) - corbeauCadreTopOffset - (j * corbeauCadreHeight / (n2-1||1));
         const pts = [new THREE.Vector3(0.28, yPos, -b/2+0.04), new THREE.Vector3(0.55, yPos, -b/2+0.04), new THREE.Vector3(0.55, yPos, b/2-0.04), new THREE.Vector3(0.28, yPos, b/2-0.04), new THREE.Vector3(0.28, yPos, -b/2+0.04)];
         group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), matLineOrange));
     }
