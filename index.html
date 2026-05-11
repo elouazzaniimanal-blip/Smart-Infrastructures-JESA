@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>JESA BIM 3D - Corbeau Positionné</title>
+    <title>JESA BIM 3D - Ancrage As Profond</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Inter:wght@400;600&display=swap');
@@ -13,7 +13,6 @@
             border-left: 6px solid #ff6b00; z-index: 100; border-radius: 4px;
         }
         .logo { font-family: 'Orbitron', sans-serif; color: #ff6b00; font-size: 14px; margin-bottom: 15px; }
-        .type-title { font-size: 14px; font-weight: 700; color: #ffffff; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid #444; }
         .data-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 12px; border-bottom: 1px dashed rgba(255,255,255,0.1); }
         .val { color: #ff6b00; font-weight: bold; }
     </style>
@@ -22,9 +21,7 @@
 
     <div id="hud">
         <div class="logo">JESA SMART MONITORING</div>
-        <div class="type-title">POSITIONNEMENT ÉLEVÉ</div>
-        <div class="data-row"><span class="label">As (Tirants)</span><span id="v-n1" class="val">---</span></div>
-        <div class="data-row"><span class="label">At (Cadres)</span><span id="v-at" class="val">---</span></div>
+        <div class="data-row"><span class="label">As (Tirants Ancrés)</span><span id="v-n1" class="val">---</span></div>
     </div>
 
 <script type="module">
@@ -34,13 +31,9 @@ const p = new URLSearchParams(window.location.search);
 let h = (parseFloat(p.get('h')) || 600) / 1000;
 let b = (parseFloat(p.get('b')) || 400) / 1000;
 const parts = (p.get('as') || '12.5*8*6*0.4*0.3*3').split('*');
-
 const n1 = parseInt(parts[1]) || 8;
-const n2 = parseInt(parts[2]) || 6;
-const nAt = parseInt(parts[5]) || 3;
 
 document.getElementById('v-n1').innerText = n1 + " HA";
-document.getElementById('v-at').innerText = nAt + " HA";
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.01, 1000);
@@ -68,59 +61,61 @@ function addPolyline(points, material) {
     group.add(new THREE.Line(geom, material));
 }
 
-// --- CONFIGURATION POSITION ---
-const yOffset = 0.5; // Décale l'ensemble vers le haut du poteau
+const yOffset = 0.5; 
 const Lcorb = 0.75;
 const hNez = 0.25;
 const zG = -b / 2;
 const xStartCorb = 0.25;
 
-// Poteau (référence fixe)
+// Poteau
 group.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 3.0, 0.5), matBeton));
 
-// Béton Corbeau (décalé vers le haut)
+// Béton Corbeau
 const shape = new THREE.Shape();
 shape.moveTo(0, 0); shape.lineTo(Lcorb, 0); shape.lineTo(Lcorb, -hNez); shape.lineTo(0, -h); shape.lineTo(0, 0);
 const meshC = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: b, bevelEnabled: false }), matBeton);
 meshC.position.set(xStartCorb, yOffset, zG);
 group.add(meshC);
 
-// --- FERRAILLAGE (DÉCALÉ DE yOffset) ---
-
-// As : Tirants
+// --- FERRAILLAGE AS : CORRECTION DESCENTE ---
 for (let i = 0; i < n1; i++) {
     const z = zG + 0.05 + (i * (b - 0.1) / (n1 - 1 || 1));
+    const yNiveauBas = yOffset - h + 0.05; // Niveau le plus bas du corbeau
+    
     addPolyline([
-        new THREE.Vector3(-0.20, yOffset - 0.15, z), 
-        new THREE.Vector3(-0.20, yOffset - 0.03, z),        
-        new THREE.Vector3(xStartCorb + Lcorb - 0.05, yOffset - 0.03, z),          
-        new THREE.Vector3(xStartCorb + Lcorb - 0.05, yOffset - (hNez - 0.03), z),
-        new THREE.Vector3(xStartCorb + 0.1, yOffset - (h - 0.05), z)
+        new THREE.Vector3(-0.15, yNiveauBas, z),           // Point de départ bas dans le poteau
+        new THREE.Vector3(-0.15, yOffset - 0.03, z),      // Montée verticale dans le poteau
+        new THREE.Vector3(xStartCorb + Lcorb - 0.05, yOffset - 0.03, z), // Filant supérieur
+        new THREE.Vector3(xStartCorb + Lcorb - 0.05, yOffset - (hNez - 0.03), z), // Descente au nez
+        new THREE.Vector3(xStartCorb + 0.1, yNiveauBas, z) // Retour à la base inclinée
     ], matAs);
 }
 
-// Ah : Horizontales
+// Ah : Horizontales (inchangé)
+const n2 = parseInt(parts[2]) || 6;
 for (let j = 0; j < n2; j++) {
     const y = (yOffset - 0.18) - (j * 0.12);
     if (y > yOffset - h + 0.05) {
         for (let side = 0; side < 2; side++) {
             const z = (side === 0) ? zG + 0.03 : (zG + b) - 0.03;
-            addPolyline([new THREE.Vector3(-0.2, y, z), new THREE.Vector3(xStartCorb + Lcorb - 0.05, y, z)], matAh);
+            addPolyline([new THREE.Vector3(-0.15, y, z), new THREE.Vector3(xStartCorb + Lcorb - 0.05, y, z)], matAh);
         }
     }
 }
 
-// At : Cadres Adaptatifs
+// At : Cadres (inchangé)
+const nAt = parseInt(parts[5]) || 3;
 for (let k = 0; k < nAt; k++) {
     const xLoc = 0.10 + (k * (Lcorb - 0.15) / (nAt - 1 || 1));
     const hLocale = hNez + ((Lcorb - xLoc) / Lcorb) * (h - hNez);
     const yBot = yOffset - hLocale + 0.03;
-    const yT = yOffset - 0.03;
     const xG = xStartCorb + xLoc;
     addPolyline([
-        new THREE.Vector3(xG, yT, zG + 0.03), new THREE.Vector3(xG, yT, zG + b - 0.03),
-        new THREE.Vector3(xG, yBot, zG + b - 0.03), new THREE.Vector3(xG, yBot, zG + 0.03),
-        new THREE.Vector3(xG, yT, zG + 0.03)
+        new THREE.Vector3(xG, yOffset - 0.03, zG + 0.03), 
+        new THREE.Vector3(xG, yOffset - 0.03, zG + b - 0.03),
+        new THREE.Vector3(xG, yBot, zG + b - 0.03), 
+        new THREE.Vector3(xG, yBot, zG + 0.03),
+        new THREE.Vector3(xG, yOffset - 0.03, zG + 0.03)
     ], matAt);
 }
 
