@@ -107,7 +107,7 @@ const nbCF = parseInt(parts[5]) || 3;
 document.getElementById('v-as').innerText = sectionValue + " cm²";
 document.getElementById('v-n1').innerText = n1 + " HA";
 document.getElementById('v-n2').innerText = n2 + " HA";
-document.getElementById('v-cf').innerText = n2 + " cadres (Resserrés)";
+document.getElementById('v-cf').innerText = nbCF + " cadres (Resserrés)";
 
 const btnNdc = document.getElementById('btn-ndc');
 
@@ -254,7 +254,7 @@ if (type === "CORBEAU") {
     addEdges(poteauMain);
     group.add(poteauMain);
 
-    const hauteurPoteau = 2.0;
+    const hauteurPoteau = 2.5; // doit correspondre à la hauteur du BoxGeometry du poteauMain
     // Géométrie de la barre en U du corbeau (tracé de référence ferraillage)
     const anchorX    = -0.18;   // position X dans le poteau (côté colonne)
     const anchorBotY = -hauteurPoteau / 2; // jambe descend jusqu'au bas du poteau visible
