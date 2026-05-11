@@ -81,6 +81,7 @@
 <script type="module">
 import { ARButton } from 'https://unpkg.com/three@0.128.0/examples/jsm/webxr/ARButton.js';
 
+// --- RÉCUPÉRATION DES PARAMÈTRES URL ---
 const p = new URLSearchParams(window.location.search);
 const type = (p.get('type') || 'CORBEAU').toUpperCase();
 
@@ -89,18 +90,22 @@ let h = h_raw > 10 ? h_raw/1000 : h_raw;
 let b_raw = parseFloat(p.get('b')) || 400;
 let b = b_raw > 10 ? b_raw/1000 : b_raw;
 
-const asStr = p.get('as') || '12.50*8*6*0.40*0.30*3'; 
-const parts = asStr.split('*').map(s => s.trim());
+// Récupération littérale pour l'affichage
+const asText = p.get('as') || '12.50';
+const n1Text = p.get('as_detail') || '8 HA12'; 
+const ahText = p.get('ah') || '6 HA10'; 
+const atText = p.get('at') || '3 cadres HA8';
 
-const sectionValue = (parts[0] && parts[0] !== "0.00") ? parts[0] : "12.50";
-const n1 = parseInt(parts[1]) || 8; 
-const n2 = parseInt(parts[2]) || 6; 
-const nbCF = parseInt(parts[5]) || 3; 
+// Valeurs numériques pour la 3D
+const n1 = parseInt(n1Text) || 8; 
+const n2 = parseInt(ahText) || 6; 
+const nbCF = parseInt(atText) || 3; 
 
-document.getElementById('v-as').innerText = sectionValue + " cm²";
-document.getElementById('v-n1').innerText = n1 + " HA";
-document.getElementById('v-n2').innerText = n2 + " HA";
-document.getElementById('v-cf').innerText = n2 + " cadres (Resserrés)";
+// Mise à jour du HUD
+document.getElementById('v-as').innerText = asText + " cm²";
+document.getElementById('v-n1').innerText = n1Text;
+document.getElementById('v-n2').innerText = ahText;
+document.getElementById('v-cf').innerText = atText;
 
 const btnNdc = document.getElementById('btn-ndc');
 if (type === "CORBEAU") {
@@ -222,15 +227,11 @@ if (type === "CORBEAU") {
     document.getElementById('txt-type').innerText = "CORBEAU TRAPÉZOÏDAL";
     document.getElementById('lbl-n1').innerText = "As - Tirants sup.";
     document.getElementById('lbl-n2').innerText = "Ah - Cadres horiz.";
-    document.getElementById('v-cf').innerText = nbCF + " At transversaux";
 
     const Lcorb = 0.75;
     const hCorb = h;
     const bCorb = b;
-    const xDebut = 0.08;
-    const xFin = Lcorb;
     const yTop = hCorb / 2;
-    const yNez = yTop - 0.25;
     const yBasPoteau = yTop - hCorb;
     const zG = -bCorb / 2;
     const zD = bCorb / 2;
@@ -243,10 +244,7 @@ if (type === "CORBEAU") {
         const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
 
         mesh.position.copy(mid);
-        mesh.quaternion.setFromUnitVectors(
-            new THREE.Vector3(0, 1, 0),
-            dir.clone().normalize()
-        );
+        mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
 
         addEdges(mesh);
         group.add(mesh);
@@ -283,35 +281,14 @@ if (type === "CORBEAU") {
     addEdges(poteauMain);
     group.add(poteauMain);
 
-    const hauteurPoteau = 2.0;
-    for (let i = 0; i < 4; i++) {
-        const bp = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, hauteurPoteau, 8), matOrange);
-        bp.position.set((i < 2 ? -0.15 : 0.15), 0, (i % 2 === 0 ? -0.15 : 0.15));
-        addEdges(bp);
-        group.add(bp);
-    }
-
-    for (let k = 0; k < n2; k++) {
-        const yCadre = yTop - 0.02 - (k * 0.10);
-        const dimP = 0.42;
-
-        addClosedFrame([
-            new THREE.Vector3(-dimP / 2, yCadre, -dimP / 2),
-            new THREE.Vector3(dimP / 2, yCadre, -dimP / 2),
-            new THREE.Vector3(dimP / 2, yCadre, dimP / 2),
-            new THREE.Vector3(-dimP / 2, yCadre, dimP / 2)
-        ]);
-    }
-
+    // 1. AS : TIRANTS SUPÉRIEURS
     const nbAs = Math.max(2, n1);
-    const zMarginAs = 0.05;
-    const yAs = yTop - 0.055;
+    const yAs = yTop - 0.045;
     const xAncragePoteau = -0.22;
-    const xAncrageNez = xFin + 0.12;
+    const xAncrageNez = Lcorb + 0.20;
 
     for (let i = 0; i < nbAs; i++) {
-        const z = zG + zMarginAs + (i * (bCorb - 2 * zMarginAs) / (nbAs - 1 || 1));
-
+        const z = zG + 0.05 + (i * (bCorb - 0.1) / (nbAs - 1 || 1));
         addBarBetween(
             new THREE.Vector3(xAncragePoteau, yAs, z),
             new THREE.Vector3(xAncrageNez, yAs, z),
@@ -319,77 +296,43 @@ if (type === "CORBEAU") {
         );
     }
 
+    // 2. AH : CADRES HORIZONTAUX
     const nbAh = Math.max(2, n2);
-    const xAh1 = xDebut;
-    const xAh2 = xFin - 0.06;
-    const zAh1 = zG + 0.045;
-    const zAh2 = zD - 0.045;
-    const yAhTop = yTop - 0.13;
-    const yAhBot = yBasPoteau + 0.12;
+    const yAhTop = yTop - 0.12; 
+    const yAhBot = yBasPoteau + 0.15;
 
     for (let j = 0; j < nbAh; j++) {
         const y = yAhTop - (j * (yAhTop - yAhBot) / (nbAh - 1 || 1));
-
         addClosedFrame([
-            new THREE.Vector3(xAh1, y, zAh1),
-            new THREE.Vector3(xAh2, y, zAh1),
-            new THREE.Vector3(xAh2, y, zAh2),
-            new THREE.Vector3(xAh1, y, zAh2)
+            new THREE.Vector3(0.30, y, zG + 0.04),
+            new THREE.Vector3(Lcorb + 0.20, y, zG + 0.04),
+            new THREE.Vector3(Lcorb + 0.20, y, zD - 0.04),
+            new THREE.Vector3(0.30, y, zD - 0.04)
         ]);
     }
 
+    // 3. AT : CADRES VERTICAUX
     const nbAt = Math.max(2, nbCF);
-    const zAt1 = zG + 0.035;
-    const zAt2 = zD - 0.035;
-
     for (let k = 0; k < nbAt; k++) {
-        const x = xDebut + (k * (xFin - xDebut) / (nbAt - 1 || 1));
-        const t = (x - xDebut) / (xFin - xDebut);
-        const yBasLocal = yBasPoteau + 0.08 + t * 0.22;
-        const yHautLocal = yTop - 0.08;
-
-        addBarBetween(
-            new THREE.Vector3(x, yBasLocal, zAt1),
-            new THREE.Vector3(x, yHautLocal, zAt1),
-            0.01
-        );
-
-        addBarBetween(
-            new THREE.Vector3(x, yBasLocal, zAt2),
-            new THREE.Vector3(x, yHautLocal, zAt2),
-            0.01
-        );
-
-        addBarBetween(
-            new THREE.Vector3(x, yHautLocal, zAt1),
-            new THREE.Vector3(x, yHautLocal, zAt2),
-            0.01
-        );
-
-        addBarBetween(
-            new THREE.Vector3(x, yBasLocal, zAt1),
-            new THREE.Vector3(x, yBasLocal, zAt2),
-            0.01
-        );
-    }
-
-    const nbInclinees = Math.max(3, nbAt);
-    for (let k = 0; k < nbInclinees; k++) {
-        const z = zG + 0.05 + (k * (bCorb - 0.1) / (nbInclinees - 1 || 1));
-
-        addBarBetween(
-            new THREE.Vector3(xDebut, yBasPoteau + 0.08, z),
-            new THREE.Vector3(xFin - 0.03, yNez - 0.05, z),
-            0.009
-        );
+        const x = 0.35 + (k * (Lcorb - 0.20) / (nbAt - 1 || 1));
+        const ratio = (x - 0.25) / Lcorb;
+        const yBasLocal = yTop - hCorb + (ratio * (hCorb - 0.25));
+        
+        addClosedFrame([
+            new THREE.Vector3(x, yTop - 0.05, zG + 0.03),
+            new THREE.Vector3(x, yBasLocal + 0.05, zG + 0.03),
+            new THREE.Vector3(x, yBasLocal + 0.05, zD - 0.03),
+            new THREE.Vector3(x, yTop - 0.05, zD - 0.03)
+        ]);
     }
 } else {
     document.getElementById('txt-type').innerText = "SEMELLE À ENCUVEMENT";
     document.getElementById('lbl-n1').innerText = "Nappe X";
     document.getElementById('lbl-n2').innerText = "Nappe Y";
 
-    const poteauA = parseFloat(parts[3]) || 0.40; 
-    const eRadier = parseFloat(parts[4]) || 0.30; 
+    const parts_mock = [0,0,0,0.40,0.30]; 
+    const poteauA = parseFloat(p.get('poteau')) || 0.40; 
+    const eRadier = parseFloat(p.get('radier')) || 0.30; 
     const L = 1.6; const hf = h; const totalH = hf + eRadier;
 
     const socle = new THREE.Mesh(new THREE.BoxGeometry(L, eRadier, L), matSocle);
