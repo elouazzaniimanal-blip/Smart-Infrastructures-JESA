@@ -17,8 +17,9 @@
         .info-massif { font-size: 12px; line-height: 1.6; margin-bottom: 15px; color: #ccc; }
         .info-massif strong { color: #fff; }
         .data-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px; }
-        .val { color: #ff6b00; font-weight: bold; }
-        .val-green { color: #2ecc71; font-weight: bold; }
+        .val { color: #d9d9d9; font-weight: bold; }
+        .val-green { color: #d8c3a5; font-weight: bold; }
+        .val-white { color: #ffffff; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -32,7 +33,7 @@
         </div>
         <div class="data-row"><span>Armatures Principales (As)</span><span id="v-as" class="val-green">---</span></div>
         <div class="data-row"><span>Armatures Horizontales (Ah)</span><span id="v-ah" class="val">---</span></div>
-        <div class="data-row"><span>Armatures Verticales (At)</span><span id="v-at" class="val">---</span></div>
+        <div class="data-row"><span>Armatures Verticales (At)</span><span id="v-at" class="val-white">---</span></div>
     </div>
 
 <script type="module">
@@ -107,7 +108,7 @@ for (let i = 0; i < nbAs3D; i++) {
         new THREE.Vector3(xStartCorb + Lcorb - 0.05, yOffset - 0.03, z),
         new THREE.Vector3(xStartCorb + Lcorb - 0.05, yOffset - hNez + 0.03, z),
         new THREE.Vector3(xStartCorb + 0.05, yOffset - h + 0.05, z)
-    ], 0xff6b00);
+    ], 0xd8c3a5);
 }
 
 // --- 2. BARRES VERTICALES DU POTEAU ---
@@ -137,8 +138,8 @@ for (let m = 0; m < 15; m++) {
 for (let j = 0; j < nbAh3D; j++) {
     const y = (yOffset - 0.18) - (j * 0.12);
     if (y > yOffset - h + 0.05) {
-        addSolidPolyline([new THREE.Vector3(-0.15, y, zG + 0.03), new THREE.Vector3(xStartCorb + Lcorb - 0.05, y, zG + 0.03)], 0x00ccff);
-        addSolidPolyline([new THREE.Vector3(-0.15, y, zG + b - 0.03), new THREE.Vector3(xStartCorb + Lcorb - 0.05, y, zG + b - 0.03)], 0x00ccff);
+        addSolidPolyline([new THREE.Vector3(-0.15, y, zG + 0.03), new THREE.Vector3(xStartCorb + Lcorb - 0.05, y, zG + 0.03)], 0xd9d9d9);
+        addSolidPolyline([new THREE.Vector3(-0.15, y, zG + b - 0.03), new THREE.Vector3(xStartCorb + Lcorb - 0.05, y, zG + b - 0.03)], 0xd9d9d9);
     }
 }
 
@@ -153,7 +154,7 @@ for (let k = 0; k < nbAt3D; k++) {
         new THREE.Vector3(xG, yOffset - hLoc + 0.03, zG + b - 0.03), 
         new THREE.Vector3(xG, yOffset - hLoc + 0.03, zG + 0.03),
         new THREE.Vector3(xG, yOffset - 0.03, zG + 0.03)
-    ], 0x2ecc71);
+    ], 0xffffff);
 }
 
 scene.add(new THREE.AmbientLight(0xffffff, 0.8));
