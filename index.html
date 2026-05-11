@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>JESA BIM 3D - Monitoring Final Corrigé</title>
+    <title>JESA BIM 3D - Monitoring Final Dynamique</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Inter:wght@400;600&display=swap');
@@ -11,11 +11,12 @@
             position: absolute; top: 20px; left: 20px; color: white; 
             background: rgba(10, 10, 10, 0.95); padding: 20px; 
             border-left: 6px solid #ff6b00; z-index: 100; border-radius: 4px;
+            min-width: 280px;
         }
         .logo { font-family: 'Orbitron', sans-serif; color: #ff6b00; font-size: 14px; margin-bottom: 15px; }
         .info-massif { font-size: 12px; line-height: 1.6; margin-bottom: 15px; color: #ccc; }
         .info-massif strong { color: #fff; }
-        .data-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 12px; border-bottom: 1px dashed rgba(255,255,255,0.1); }
+        .data-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px; }
         .val { color: #ff6b00; font-weight: bold; }
         .val-green { color: #2ecc71; font-weight: bold; }
     </style>
@@ -25,43 +26,28 @@
     <div id="hud">
         <div class="logo">JESA SMART MONITORING</div>
         <div class="info-massif">
-            ID Massif : <strong id="m-id">---</strong><br>
-            Date Coulage : <strong id="m-date">---</strong>
+            ID Massif : <strong id="m-id">MS-ST-2024-001</strong><br>
+            Type Béton : <strong>CEM III/A (Bas Carbone)</strong><br>
+            Date Coulage : <strong id="m-date">14/05/2026</strong>
         </div>
-        <div class="data-row"><span>Section (As)</span><span id="v-as" class="val-green">---</span></div>
-        <div class="data-row"><span>Tirants (n1)</span><span id="v-n1" class="val">---</span></div>
-        <div class="data-row"><span>Horiz. (Ah)</span><span id="v-n2" class="val">---</span></div>
-        <div class="data-row"><span>Cadres (At)</span><span id="v-at" class="val">---</span></div>
+        <div class="data-row"><span>Armatures Principales (As)</span><span id="v-as" class="val-green">---</span></div>
+        <div class="data-row"><span>Armatures Horizontales (Ah)</span><span id="v-ah" class="val">---</span></div>
+        <div class="data-row"><span>Armatures Verticales (At)</span><span id="v-at" class="val">---</span></div>
     </div>
 
 <script type="module">
 import { ARButton } from 'https://unpkg.com/three@0.128.0/examples/jsm/webxr/ARButton.js';
 
+// --- RÉCUPÉRATION DES PARAMÈTRES DE TON APP ---
 const p = new URLSearchParams(window.location.search);
-const decode = (s) => s ? decodeURIComponent(s.replace(/\+/g, ' ')).replace(/_/g, ' ') : '---';
+const decode = (s) => s ? decodeURIComponent(s.replace(/\+/g, ' ')).replace(/_/g, ' ') : null;
 
-// --- CORRECTION 1 : AFFICHAGE AS (cm2) ---
-let rawAs = parseFloat(p.get('as')) || 0;
-let displayAs = rawAs > 100 ? (rawAs / 100).toFixed(2) : rawAs.toFixed(2);
-document.getElementById('v-as').innerText = displayAs + " cm²";
+// Remplissage dynamique des résultats de l'application
+document.getElementById('v-as').innerText = (p.get('as') || "5.21") + " cm²";
+document.getElementById('v-ah').innerText = decode(p.get('n1')) || "6 HA10";
+document.getElementById('v-at').innerText = decode(p.get('at')) || "2 x 2 HA8";
 
-// --- CORRECTION 2 : TEXTES DYNAMIQUES (n1, n2, at) ---
-const n1_text = decode(p.get('n1')) || "8 HA12";
-const n2_text = decode(p.get('n2')) || "6 HA10";
-const at_text = decode(p.get('at')) || "3 HA8";
-
-document.getElementById('v-n1').innerText = n1_text;
-document.getElementById('v-n2').innerText = n2_text;
-document.getElementById('v-at').innerText = at_text;
-
-// --- PARAMETRES GEOMETRIQUES ---
-let h = (parseFloat(p.get('h')) || 600) / 1000;
-let b = (parseFloat(p.get('b')) || 400) / 1000;
-
-const numN1 = parseInt(n1_text) || 8;
-const numN2 = parseInt(n2_text) || 6;
-const numAt = parseInt(at_text) || 3;
-
+// --- CONFIGURATION SCÈNE 3D ---
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.01, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -74,26 +60,25 @@ const group = new THREE.Group();
 scene.add(group);
 
 const matBeton = new THREE.MeshStandardMaterial({ color: 0x888888, transparent: true, opacity: 0.3 });
-const matAs = new THREE.LineBasicMaterial({ color: 0xff6b00, linewidth: 2 });
-const matAh = new THREE.LineBasicMaterial({ color: 0x00ccff });
-const matAt = new THREE.LineBasicMaterial({ color: 0x2ecc71 });
-const matAcierSolide = new THREE.MeshStandardMaterial({ color: 0xff6b00, metalness: 0.8 });
 
-scene.add(new THREE.AmbientLight(0xffffff, 0.8));
-const sun = new THREE.DirectionalLight(0xffffff, 1);
-sun.position.set(5, 10, 5);
-scene.add(sun);
-
-function addPolyline(points, material) {
-    const geom = new THREE.BufferGeometry().setFromPoints(points);
-    group.add(new THREE.Line(geom, material));
+// --- FONCTIONS DE TRACÉ ---
+function addDashedLine(points, color) {
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    const material = new THREE.LineDashedMaterial({ color: color, dashSize: 0.05, gapSize: 0.03 });
+    const line = new THREE.Line(geometry, material);
+    line.computeLineDistances();
+    group.add(line);
 }
 
-const yOffset = 0.5;
-const Lcorb = 0.75;
-const hNez = 0.25;
-const zG = -b / 2;
-const xStartCorb = 0.25;
+function addSolidLine(points, color) {
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    const material = new THREE.LineBasicMaterial({ color: color });
+    group.add(new THREE.Line(geometry, material));
+}
+
+// Dimensions (mètres)
+const yOffset = 0.5, Lcorb = 0.75, hNez = 0.25, h = 0.6, b = 0.4;
+const zG = -b / 2, xStartCorb = 0.25;
 
 // Béton
 group.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 3.0, 0.5), matBeton));
@@ -103,59 +88,45 @@ const meshC = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: b, bevelE
 meshC.position.set(xStartCorb, yOffset, zG);
 group.add(meshC);
 
-// --- 1. AS : TIRANTS (CORRIGÉ POUR ARRÊT À L'EXTRÉMITÉ) ---
-const zPositionsExtremes = [];
-for (let i = 0; i < numN1; i++) {
-    const z = zG + 0.05 + (i * (b - 0.1) / (numN1 - 1 || 1));
-    if (i === 0 || i === numN1 - 1) zPositionsExtremes.push(z);
-
-    const yBas = yOffset - h + 0.05;
-    const xExtremiteNez = xStartCorb + Lcorb - 0.05; // Position X au bout du corbeau
-
-    addPolyline([
-        new THREE.Vector3(-0.15, yBas, z),
+// 1. AS : POINTILLÉS ORANGE (Armatures Principales)
+for (let i = 0; i < 8; i++) {
+    const z = zG + 0.05 + (i * (b - 0.1) / 7);
+    addDashedLine([
+        new THREE.Vector3(-0.15, yOffset - h + 0.05, z),
         new THREE.Vector3(-0.15, yOffset - 0.03, z),
-        new THREE.Vector3(xExtremiteNez, yOffset - 0.03, z), // Filant sup jusqu'au bout
-        new THREE.Vector3(xExtremiteNez, yOffset - (hNez - 0.03), z), // Descente au nez
-        new THREE.Vector3(xStartCorb + 0.05, yBas, z) // Retour à la base inclinée
-    ], matAs);
+        new THREE.Vector3(xStartCorb + Lcorb - 0.05, yOffset - 0.03, z),
+        new THREE.Vector3(xStartCorb + Lcorb - 0.05, yOffset - hNez + 0.03, z),
+        new THREE.Vector3(xStartCorb + 0.05, yOffset - h + 0.05, z)
+    ], 0xff6b00);
 }
 
-// --- 2. ARMATURE POTEAU ---
-const xPositionsPoteau = [-0.15, 0.15]; 
-xPositionsPoteau.forEach(x => {
-    zPositionsExtremes.forEach(z => {
-        const barPoteau = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 3.0, 8), matAcierSolide);
-        barPoteau.position.set(x, 0, z);
-        group.add(barPoteau);
-    });
-});
-
-// --- 3. AH : HORIZONTALES ---
-for (let j = 0; j < numN2; j++) {
+// 2. AH : POINTILLÉS BLEU (Armatures Horizontales)
+for (let j = 0; j < 6; j++) {
     const y = (yOffset - 0.18) - (j * 0.12);
     if (y > yOffset - h + 0.05) {
-        for (let side = 0; side < 2; side++) {
-            const z = (side === 0) ? zG + 0.03 : (zG + b) - 0.03;
-            addPolyline([new THREE.Vector3(-0.15, y, z), new THREE.Vector3(xStartCorb + Lcorb - 0.05, y, z)], matAh);
-        }
+        addDashedLine([new THREE.Vector3(-0.15, y, zG + 0.03), new THREE.Vector3(xStartCorb + Lcorb - 0.05, y, zG + 0.03)], 0x00ccff);
+        addDashedLine([new THREE.Vector3(-0.15, y, zG + b - 0.03), new THREE.Vector3(xStartCorb + Lcorb - 0.05, y, zG + b - 0.03)], 0x00ccff);
     }
 }
 
-// --- 4. AT : CADRES DE FRETTAGE ---
-for (let k = 0; k < numAt; k++) {
-    const xLoc = 0.10 + (k * (Lcorb - 0.15) / (numAt - 1 || 1));
-    const hLocale = hNez + ((Lcorb - xLoc) / Lcorb) * (h - hNez);
-    const yBot = yOffset - hLocale + 0.03;
+// 3. AT : PLEIN VERT (Armatures Verticales)
+for (let k = 0; k < 3; k++) {
+    const xLoc = 0.10 + (k * 0.3);
+    const hLoc = hNez + ((Lcorb - xLoc) / Lcorb) * (h - hNez);
     const xG = xStartCorb + xLoc;
-    addPolyline([
+    addSolidLine([
         new THREE.Vector3(xG, yOffset - 0.03, zG + 0.03), 
         new THREE.Vector3(xG, yOffset - 0.03, zG + b - 0.03),
-        new THREE.Vector3(xG, yBot, zG + b - 0.03), 
-        new THREE.Vector3(xG, yBot, zG + 0.03),
+        new THREE.Vector3(xG, yOffset - hLoc + 0.03, zG + b - 0.03), 
+        new THREE.Vector3(xG, yOffset - hLoc + 0.03, zG + 0.03),
         new THREE.Vector3(xG, yOffset - 0.03, zG + 0.03)
-    ], matAt);
+    ], 0x2ecc71);
 }
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+const sun = new THREE.DirectionalLight(0xffffff, 1);
+sun.position.set(5, 10, 5);
+scene.add(sun);
 
 function animate() {
     renderer.setAnimationLoop(() => {
