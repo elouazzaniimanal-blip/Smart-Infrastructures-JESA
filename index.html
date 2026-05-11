@@ -91,7 +91,12 @@ let h = h_raw > 10 ? h_raw/1000 : h_raw;
 let b_raw = parseFloat(p.get('b')) || 400;
 let b = b_raw > 10 ? b_raw/1000 : b_raw;
 
-const asStr = p.get('as') || '12.50*8*6*0.40*0.30*3'; 
+const reinforcementStr =
+    p.get('as') ||
+    p.get('AS') ||
+    p.get('ah') ||
+    p.get('AH');
+const asStr = reinforcementStr || '12.50*8*6*0.40*0.30*3'; 
 const parts = asStr.split('*').map(s => s.trim());
 
 const sectionValue = (parts[0] && parts[0] !== "0.00") ? parts[0] : "12.50";
