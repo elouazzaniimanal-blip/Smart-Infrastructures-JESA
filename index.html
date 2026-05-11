@@ -135,7 +135,7 @@ for (let j = 0; j < nbAh3D; j++) {
     const y2 = yOffset - h + 0.05;
 
     const t = (y - y1) / (y2 - y1);
-    const xEnd = x1 + t * (x2 - x1);
+    const xEnd = x1 + t * (x2 - x1) - 0.03;
 
     if (y > yOffset - h + 0.05) {
         addSolidPolyline([
