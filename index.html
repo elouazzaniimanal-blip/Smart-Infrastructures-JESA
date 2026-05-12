@@ -39,6 +39,7 @@
 <script type="module">
 import { ARButton } from 'https://unpkg.com/three@0.128.0/examples/jsm/webxr/ARButton.js';
 
+// --- RÉCUPÉRATION DYNAMIQUE ---
 const p = new URLSearchParams(window.location.search);
 const decode = (s) => s ? decodeURIComponent(s.replace(/\+/g, ' ')).replace(/_/g, ' ') : null;
 
@@ -47,7 +48,7 @@ document.getElementById('v-ah').innerText = decode(p.get('n1')) || "6 HA10";
 document.getElementById('v-at').innerText = decode(p.get('at')) || "2 × 2 HA8";
 
 const asText = decode(p.get('as_detail')) || "8 HA12";
-const ahText = decode(p.get('n1')) || decode(p.get('ah')) || "6 HA10";
+const ahText = decode(p.get('n1')) || "6 HA10";
 const atText = decode(p.get('at')) || "2 × 2 HA8";
 
 function getFirstNumber(text, defaultValue) {
@@ -55,17 +56,8 @@ function getFirstNumber(text, defaultValue) {
     return match ? parseInt(match[0], 10) : defaultValue;
 }
 
-function getAhLitsNumber(text, defaultValue) {
-    const s = String(text || "");
-    const matchLits = s.match(/(\d+)\s*lits?\s*horiz/i);
-    if (matchLits) return parseInt(matchLits[1], 10);
-    const matchCadres = s.match(/(\d+)\s*cad/i);
-    if (matchCadres) return parseInt(matchCadres[1], 10);
-    return getFirstNumber(s, defaultValue);
-}
-
 const nbAs3D = Math.max(1, getFirstNumber(asText, 8));
-const nbAh3D = Math.max(1, getAhLitsNumber(ahText, 6));
+const nbAh3D = Math.max(1, getFirstNumber(ahText, 6));
 const nbAt3D = Math.max(1, getFirstNumber(atText, 3));
 
 const scene = new THREE.Scene();
@@ -81,6 +73,14 @@ scene.add(group);
 
 const matBeton = new THREE.MeshStandardMaterial({ color: 0x888888, transparent: true, opacity: 0.3 });
 const matAcierSolide = new THREE.MeshStandardMaterial({ color: 0xff6b00, metalness: 0.8 });
+
+function addDashedPolyline(points, color) {
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    const material = new THREE.LineDashedMaterial({ color: color, dashSize: 0.05, gapSize: 0.03 });
+    const line = new THREE.Line(geometry, material);
+    line.computeLineDistances();
+    group.add(line);
+}
 
 function addSolidPolyline(points, color) {
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
@@ -99,10 +99,10 @@ const meshC = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: b, bevelE
 meshC.position.set(xStartCorb, yOffset, zG);
 group.add(meshC);
 
-// --- 1. AS : PLEIN DORE ---
+// --- 1. AS : POINTILLÉS ORANGE ---
 for (let i = 0; i < nbAs3D; i++) {
     const z = zG + 0.05 + (i * (b - 0.1) / Math.max(1, nbAs3D - 1));
-    addSolidPolyline([
+    addDashedPolyline([
         new THREE.Vector3(-0.15, yOffset - h + 0.05, z),
         new THREE.Vector3(-0.15, yOffset - 0.03, z),
         new THREE.Vector3(xStartCorb + Lcorb - 0.05, yOffset - 0.03, z),
@@ -122,7 +122,7 @@ xPos.forEach(x => {
     });
 });
 
-// --- AJOUT : CADRES HORIZONTAUX DU POTEAU ---
+// --- AJOUT : CADRES HORIZONTAUX DU POTEAU (ÉTRIERS) ---
 for (let m = 0; m < 15; m++) {
     const yCadre = -1.4 + (m * 0.2);
     addSolidPolyline([
@@ -134,9 +134,9 @@ for (let m = 0; m < 15; m++) {
     ], 0xff6b00); 
 }
 
-// --- 3. AH : S'ÉTEND EXACTEMENT JUSQU'À AS ---
+// --- 3. AH : PLEIN BLEU (Console) ---
 for (let j = 0; j < nbAh3D; j++) {
-    const y = (yOffset - 0.15) - (j * 0.10);
+    const y = (yOffset - 0.18) - (j * 0.12);
 
     const asTopX = xStartCorb + Lcorb - 0.05;
     const asTopY = yOffset - hNez + 0.03;
@@ -147,19 +147,12 @@ for (let j = 0; j < nbAh3D; j++) {
     const xEnd = asTopX + ratio * (asBotX - asTopX);
 
     if (y <= asTopY && y >= asBotY) {
-        addSolidPolyline([
-            new THREE.Vector3(-0.15, y, zG + 0.03),
-            new THREE.Vector3(xEnd, y, zG + 0.03)
-        ], 0xd9d9d9);
-
-        addSolidPolyline([
-            new THREE.Vector3(-0.15, y, zG + b - 0.03),
-            new THREE.Vector3(xEnd, y, zG + b - 0.03)
-        ], 0xd9d9d9);
+        addSolidPolyline([new THREE.Vector3(-0.15, y, zG + 0.03), new THREE.Vector3(xEnd, y, zG + 0.03)], 0xd9d9d9);
+        addSolidPolyline([new THREE.Vector3(-0.15, y, zG + b - 0.03), new THREE.Vector3(xEnd, y, zG + b - 0.03)], 0xd9d9d9);
     }
 }
 
-// --- 4. AT : PLEIN BLANC ---
+// --- 4. AT : PLEIN VERT (Console) ---
 for (let k = 0; k < nbAt3D; k++) {
     const xLoc = 0.10 + (k * (Lcorb - 0.20) / Math.max(1, nbAt3D - 1));
     const hLoc = hNez + ((Lcorb - xLoc) / Lcorb) * (h - hNez);
