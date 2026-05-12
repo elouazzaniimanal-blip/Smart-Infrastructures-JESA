@@ -57,9 +57,9 @@ function getFirstNumber(text, defaultValue) {
 
 function getAhLitsNumber(text, defaultValue) {
     const s = String(text || "");
-    const matchLits = s.match(/(\d+)\s*lits?\s*horiz/i);
+    const matchLits = s.match(/(\d+)\s*lits?\s*horiz\.?/i);
     if (matchLits) return parseInt(matchLits[1], 10);
-    const matchCadres = s.match(/(\d+)\s*cad/i);
+    const matchCadres = s.match(/(\d+)\s*cad\.?/i);
     if (matchCadres) return parseInt(matchCadres[1], 10);
     return getFirstNumber(s, defaultValue);
 }
@@ -135,28 +135,25 @@ for (let m = 0; m < 15; m++) {
 }
 
 // --- 3. AH : S'ÉTEND EXACTEMENT JUSQU'À AS ---
+const asTopX = xStartCorb + Lcorb - 0.05;
+const asTopY = yOffset - hNez + 0.03;
+const asBotX = xStartCorb + 0.05;
+const asBotY = yOffset - h + 0.05;
+
 for (let j = 0; j < nbAh3D; j++) {
-    const y = (yOffset - 0.15) - (j * 0.10);
+    const ratioY = nbAh3D === 1 ? 0.5 : j / (nbAh3D - 1);
+    const y = asTopY + ratioY * (asBotY - asTopY);
+    const xEnd = asTopX + ratioY * (asBotX - asTopX);
 
-    const asTopX = xStartCorb + Lcorb - 0.05;
-    const asTopY = yOffset - hNez + 0.03;
-    const asBotX = xStartCorb + 0.05;
-    const asBotY = yOffset - h + 0.05;
+    addSolidPolyline([
+        new THREE.Vector3(-0.15, y, zG + 0.03),
+        new THREE.Vector3(xEnd, y, zG + 0.03)
+    ], 0xd9d9d9);
 
-    const ratio = (y - asTopY) / (asBotY - asTopY);
-    const xEnd = asTopX + ratio * (asBotX - asTopX);
-
-    if (y <= asTopY && y >= asBotY) {
-        addSolidPolyline([
-            new THREE.Vector3(-0.15, y, zG + 0.03),
-            new THREE.Vector3(xEnd, y, zG + 0.03)
-        ], 0xd9d9d9);
-
-        addSolidPolyline([
-            new THREE.Vector3(-0.15, y, zG + b - 0.03),
-            new THREE.Vector3(xEnd, y, zG + b - 0.03)
-        ], 0xd9d9d9);
-    }
+    addSolidPolyline([
+        new THREE.Vector3(-0.15, y, zG + b - 0.03),
+        new THREE.Vector3(xEnd, y, zG + b - 0.03)
+    ], 0xd9d9d9);
 }
 
 // --- 4. AT : PLEIN BLANC ---
