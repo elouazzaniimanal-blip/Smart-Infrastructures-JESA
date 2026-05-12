@@ -55,8 +55,17 @@ function getFirstNumber(text, defaultValue) {
     return match ? parseInt(match[0], 10) : defaultValue;
 }
 
+function getAhLitsNumber(text, defaultValue) {
+    const s = String(text || "");
+    const matchLits = s.match(/(\d+)\s*lits?\s*horiz/i);
+    if (matchLits) return parseInt(matchLits[1], 10);
+    const matchCadres = s.match(/(\d+)\s*cad/i);
+    if (matchCadres) return parseInt(matchCadres[1], 10);
+    return getFirstNumber(s, defaultValue);
+}
+
 const nbAs3D = Math.max(1, getFirstNumber(asText, 8));
-const nbAh3D = Math.max(1, getFirstNumber(ahText, 6));
+const nbAh3D = Math.max(1, getAhLitsNumber(ahText, 6));
 const nbAt3D = Math.max(1, getFirstNumber(atText, 3));
 
 const scene = new THREE.Scene();
