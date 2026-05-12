@@ -47,7 +47,7 @@ document.getElementById('v-ah').innerText = decode(p.get('n1')) || "6 HA10";
 document.getElementById('v-at').innerText = decode(p.get('at')) || "2 × 2 HA8";
 
 const asText = decode(p.get('as_detail')) || "8 HA12";
-const ahText = decode(p.get('n1')) || "6 HA10";
+const ahText = decode(p.get('n1')) || decode(p.get('ah')) || "6 HA10";
 const atText = decode(p.get('at')) || "2 × 2 HA8";
 
 function getFirstNumber(text, defaultValue) {
